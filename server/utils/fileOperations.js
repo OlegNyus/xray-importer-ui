@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 
-export const CONFIG_PATH = path.join(PROJECT_ROOT, 'cypress', 'config', 'xray-config.json');
+export const CONFIG_PATH = path.join(PROJECT_ROOT, 'config', 'xray-config.json');
 export const DRAFTS_DIR = path.join(PROJECT_ROOT, 'testCases');
 
 /**

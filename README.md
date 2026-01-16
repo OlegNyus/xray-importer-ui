@@ -94,14 +94,14 @@ testCases/
 
 Config stored in:
 ```
-cypress/config/xray-config.json
+config/xray-config.json
 ```
 
 ## File Structure
 
 ```
+config/              # Xray config (gitignored)
 testCases/           # Test case JSON files (gitignored)
-cypress/config/      # Xray config (gitignored)
 server/              # Express backend
   routes/
     config.js        # Config endpoints

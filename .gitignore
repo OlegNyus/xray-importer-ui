@@ -6,7 +6,7 @@ planning/
 node_modules/
 
 # Config files (contain credentials)
-cypress/config/xray-config.json
+config/
 
 # Test case files (generated locally)
 testCases/*
