@@ -1,0 +1,40 @@
+# Temporary/Development folders
+mockup/
+planning/
+
+# Dependencies
+node_modules/
+
+# Config files (contain credentials)
+cypress/config/xray-config.json
+
+# Test case files (generated locally)
+testCases/*
+!testCases/.gitkeep
+
+# Build output
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+*.tmp
+*.temp
