@@ -82,7 +82,7 @@ Example: `User Management | UI | Verify login with valid credentials`
 ### Bulk Import
 1. Save multiple test cases as drafts
 2. Go to "Saved" tab
-3. Select "Ready" test cases
+3. Select complete drafts (Draft ✓)
 4. Click "Import Selected"
 5. Post-import modal: delete all or keep as "imported"
 
