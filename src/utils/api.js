@@ -127,3 +127,43 @@ export async function migrateDrafts(testCases) {
   });
   return handleResponse(response);
 }
+
+/**
+ * Get functional areas
+ */
+export async function fetchFunctionalAreas() {
+  const response = await fetch(`${API_BASE}/settings/functional-areas`);
+  return handleResponse(response);
+}
+
+/**
+ * Save functional areas
+ */
+export async function saveFunctionalAreas(areas) {
+  const response = await fetch(`${API_BASE}/settings/functional-areas`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ areas }),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Get labels
+ */
+export async function fetchLabels() {
+  const response = await fetch(`${API_BASE}/settings/labels`);
+  return handleResponse(response);
+}
+
+/**
+ * Save labels
+ */
+export async function saveLabels(labels) {
+  const response = await fetch(`${API_BASE}/settings/labels`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ labels }),
+  });
+  return handleResponse(response);
+}

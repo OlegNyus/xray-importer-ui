@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import configRoutes from './routes/config.js';
 import draftsRoutes from './routes/drafts.js';
+import settingsRoutes from './routes/settings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,6 +22,7 @@ app.use(express.json({ limit: '1mb' }));
 // API Routes
 app.use('/api/config', configRoutes);
 app.use('/api/drafts', draftsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
