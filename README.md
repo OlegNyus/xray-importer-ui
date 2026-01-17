@@ -40,15 +40,26 @@ Backend runs on http://localhost:3001
 
 ## Creating Test Cases
 
+### Summary Format
+Summary uses structured format: `Functional Area | UI/API | Title`
+
+Example: `User Management | UI | Verify login with valid credentials`
+
+- **Functional Area** - Select from dropdown or add new
+- **Layer** - UI or API toggle
+- **Title** - Test case title
+
 ### Required for Import
-- **Summary** - Brief title
+- **Summary** - All three parts (Area, Layer, Title)
 - **Description** - Detailed description
 - **Test Steps** - At least one step with Action and Expected Result
 
 ### Optional
-- **Test Type** - Manual (default) or Automated
-- **Priority** - High, Medium, Low
-- **Labels** - Tags for categorization
+- **Labels** - Select from predefined list or add new
+
+### Fixed Values (for now)
+- **Test Type** - Manual
+- **Priority** - Medium
 
 ### Steps
 - Drag to reorder
@@ -77,9 +88,19 @@ Backend runs on http://localhost:3001
 
 ## Test Case Status
 
-- **Draft** - Missing required fields, cannot import
-- **Ready** - Complete, can be imported
-- **Imported** - Successfully imported, kept for reference
+Only two statuses: `draft` and `imported`
+
+| Badge | Meaning | Can Import |
+|-------|---------|------------|
+| New | Not saved yet | No |
+| Draft | Saved, incomplete | No |
+| Draft ✓ | Saved, complete | Yes |
+| Imported | In Xray | No (read-only) |
+
+- **Save Draft** → always `status: 'draft'`
+- **Completeness** (`isComplete`) computed from required fields
+- **Draft ✓** indicates complete and ready to import
+- **Import** → sets `status: 'imported'` (read-only)
 
 ## Storage
 
@@ -92,19 +113,24 @@ testCases/
   ...
 ```
 
-Config stored in:
+Config and settings stored in:
 ```
-config/xray-config.json
+config/
+  xray-config.json   # Xray API credentials (gitignored)
+  settings.json      # Functional areas, labels
 ```
 
 ## File Structure
 
 ```
-config/              # Xray config (gitignored)
+config/              # Config files
+  xray-config.json   # API credentials (gitignored)
+  settings.json      # Functional areas, labels
 testCases/           # Test case JSON files (gitignored)
 server/              # Express backend
   routes/
     config.js        # Config endpoints
+    settings.js      # Functional areas, labels endpoints
     drafts.js        # Draft CRUD + import
   utils/
     fileOperations.js
@@ -118,6 +144,10 @@ src/                 # React frontend
 |--------|----------|-------------|
 | GET | /api/config | Get config (masked credentials) |
 | POST | /api/config | Save config |
+| GET | /api/settings/functional-areas | Get functional areas |
+| PUT | /api/settings/functional-areas | Save functional areas |
+| GET | /api/settings/labels | Get labels |
+| PUT | /api/settings/labels | Save labels |
 | GET | /api/drafts | List all drafts |
 | GET | /api/drafts/:id | Get single draft |
 | POST | /api/drafts | Create draft |

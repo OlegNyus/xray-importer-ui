@@ -62,9 +62,12 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
 
   const handleSaveDraft = useCallback(async (testCase) => {
     try {
+      // Always save as draft status when using Save Draft button
+      const draftData = { ...testCase, status: 'draft' };
+
       if (editingId) {
         // Update existing
-        const result = await updateDraft(editingId, testCase);
+        const result = await updateDraft(editingId, draftData);
         if (result.success) {
           setSavedTestCases((prev) =>
             prev.map((tc) => (tc.id === editingId ? result.draft : tc))
@@ -75,7 +78,7 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
         }
       } else {
         // Create new
-        const result = await createDraft(testCase);
+        const result = await createDraft(draftData);
         if (result.success) {
           setSavedTestCases((prev) => [result.draft, ...prev]);
           setEditingId(result.id);

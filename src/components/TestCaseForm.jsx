@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import SortableStepCard from './SortableStepCard';
 import TagInput from './TagInput';
+import SummaryInput from './SummaryInput';
 import Modal from './Modal';
 import { createDraft, updateDraft, importDraft } from '../utils/api';
 
@@ -43,6 +44,61 @@ function TestCaseForm({
   const [loading, setLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
+
+  // Check if TC is imported (read-only)
+  const isReadOnly = editingTestCase?.status === 'imported';
+
+  // Compute current completeness for status display
+  function checkComplete() {
+    const hasRequiredFields =
+      formData.summary?.trim() &&
+      formData.description?.trim() &&
+      formData.steps?.length > 0;
+
+    if (!hasRequiredFields) return false;
+
+    return formData.steps.every(
+      (step) => step.action?.trim() && step.result?.trim()
+    );
+  }
+
+  const currentIsComplete = checkComplete();
+
+  // Get current status badge
+  function getStatusBadge() {
+    // Imported - read-only
+    if (isReadOnly) {
+      return (
+        <span className="text-xs font-normal px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded flex items-center gap-1">
+          Imported
+        </span>
+      );
+    }
+    // New - not saved yet
+    if (!editingId) {
+      return (
+        <span className="text-xs font-normal px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
+          New
+        </span>
+      );
+    }
+    // Draft - saved, show completeness indicator
+    if (currentIsComplete) {
+      return (
+        <span className="text-xs font-normal px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded flex items-center gap-1">
+          Draft
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      );
+    }
+    return (
+      <span className="text-xs font-normal px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+        Draft
+      </span>
+    );
+  }
 
   // DnD sensors
   const sensors = useSensors(
@@ -106,6 +162,12 @@ function TestCaseForm({
       ),
     }));
     setHasUnsavedChanges(true);
+    // Clear step error when user types
+    const stepIndex = formData.steps.findIndex((s) => s.id === id);
+    const errorKey = `step_${stepIndex}_${field}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: null }));
+    }
   }
 
   function addStep() {
@@ -169,8 +231,8 @@ function TestCaseForm({
     return {
       summary: formData.summary,
       description: formData.description,
-      testType: formData.testType,
-      priority: formData.priority,
+      testType: 'Manual', // Fixed for now
+      priority: 'Medium', // Fixed for now
       labels: formData.labels,
       steps: formData.steps.map(({ id, ...rest }) => rest), // Remove id for API
     };
@@ -257,11 +319,16 @@ function TestCaseForm({
   return (
     <>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          {editingId ? 'Edit Test Case' : 'Create Test Case'}
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          {isReadOnly ? 'View Test Case' : editingId ? 'Edit Test Case' : 'Create Test Case'}
+          {getStatusBadge()}
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {editingId ? 'Modify the test case and save or import' : 'Fill in the details below and import to Xray Cloud'}
+          {isReadOnly
+            ? 'This test case has been imported to Xray and is read-only'
+            : editingId
+              ? 'Modify the test case and save or import'
+              : 'Fill in the details below and import to Xray Cloud'}
         </p>
       </div>
 
@@ -270,26 +337,24 @@ function TestCaseForm({
         <div className="space-y-4">
           <h3 className="font-medium text-gray-900 dark:text-white">Test Case Details</h3>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Summary <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="summary"
-              value={formData.summary}
-              onChange={handleChange}
-              placeholder="Brief description of the test case"
-              className={`input ${errors.summary ? 'input-error' : ''}`}
-            />
-            {errors.summary && (
-              <p className="text-red-500 text-sm mt-1">{errors.summary}</p>
-            )}
-          </div>
+          <SummaryInput
+            value={formData.summary}
+            onChange={(summary) => {
+              if (isReadOnly) return;
+              setFormData((prev) => ({ ...prev, summary }));
+              setHasUnsavedChanges(true);
+              if (errors.summary) {
+                setErrors((prev) => ({ ...prev, summary: null }));
+              }
+            }}
+            error={errors.summary}
+            editingId={editingId}
+            disabled={isReadOnly}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description <span className="text-red-500">*</span>
+              Description {!isReadOnly && <span className="text-red-500">*</span>}
             </label>
             <textarea
               name="description"
@@ -297,7 +362,8 @@ function TestCaseForm({
               onChange={handleChange}
               rows={3}
               placeholder="Detailed description of the test case"
-              className={`input ${errors.description ? 'input-error' : ''}`}
+              disabled={isReadOnly}
+              className={`input ${errors.description ? 'input-error' : ''} ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
             />
             {errors.description && (
               <p className="text-red-500 text-sm mt-1">{errors.description}</p>
@@ -307,33 +373,31 @@ function TestCaseForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Test Type <span className="text-red-500">*</span>
+                Test Type
+                <span className="ml-2 text-xs text-gray-400">(Coming soon)</span>
               </label>
               <select
                 name="testType"
-                value={formData.testType}
-                onChange={handleChange}
-                className="select"
+                value="Manual"
+                disabled
+                className="select opacity-60 cursor-not-allowed"
               >
                 <option value="Manual">Manual</option>
-                <option value="Automated">Automated</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Priority
+                <span className="ml-2 text-xs text-gray-400">(Coming soon)</span>
               </label>
               <select
                 name="priority"
-                value={formData.priority}
-                onChange={handleChange}
-                className="select"
+                value="Medium"
+                disabled
+                className="select opacity-60 cursor-not-allowed"
               >
-                <option value="">Select priority</option>
-                <option value="High">High</option>
                 <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
               </select>
             </div>
           </div>
@@ -346,6 +410,7 @@ function TestCaseForm({
               tags={formData.labels}
               onChange={handleLabelsChange}
               placeholder="Type and press Enter to add labels"
+              disabled={isReadOnly}
             />
           </div>
         </div>
@@ -354,12 +419,14 @@ function TestCaseForm({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-gray-900 dark:text-white">Test Steps</h3>
-            <button type="button" onClick={addStep} className="btn btn-secondary btn-sm">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              Add Step
-            </button>
+            {!isReadOnly && (
+              <button type="button" onClick={addStep} className="btn btn-secondary btn-sm">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Add Step
+              </button>
+            )}
           </div>
 
           <DndContext
@@ -381,6 +448,7 @@ function TestCaseForm({
                     canRemove={formData.steps.length > 1}
                     onChange={handleStepChange}
                     onRemove={removeStep}
+                    disabled={isReadOnly}
                   />
                 ))}
               </div>
@@ -389,41 +457,55 @@ function TestCaseForm({
         </div>
 
         {/* Form Hint */}
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span>
-            <strong>Save Draft</strong> — no validation &nbsp;|&nbsp; <strong>Import</strong> — requires all fields
-          </span>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <span>
+              <strong>Save Draft</strong> — no validation &nbsp;|&nbsp; <strong>Import</strong> — requires all fields
+            </span>
+          </div>
+        )}
 
         {/* Actions */}
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={handleReset} className="btn btn-ghost">
-            Reset
-          </button>
-          <button type="button" onClick={handleSaveDraft} disabled={!hasFormData()} className="btn btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        {isReadOnly ? (
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            {editingId ? 'Update Draft' : 'Save Draft'}
-          </button>
-          <button type="submit" disabled={loading} className="btn btn-primary flex-1">
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                Importing...
-              </>
-            ) : (
-              <>
-                Import to Xray
-              </>
-            )}
-          </button>
-        </div>
+            <span>
+              This test case has been imported to Xray and cannot be modified.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={handleReset} className="btn btn-ghost">
+              Reset
+            </button>
+            <button type="button" onClick={handleSaveDraft} disabled={!hasFormData()} className="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              {editingId ? 'Update Draft' : 'Save Draft'}
+            </button>
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1">
+              {loading ? (
+                <>
+                  <span className="spinner"></span>
+                  Importing...
+                </>
+              ) : (
+                <>
+                  Import to Xray
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </form>
 
       {/* Reset Modal */}

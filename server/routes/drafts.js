@@ -12,13 +12,9 @@ import { importToXray } from '../utils/xrayClient.js';
 const router = express.Router();
 
 /**
- * Determine status based on test case completeness
+ * Check if test case has all required fields for import
  */
-function determineStatus(draft) {
-  if (draft.status === 'imported') {
-    return 'imported';
-  }
-
+function isComplete(draft) {
   const hasRequiredFields =
     draft.summary?.trim() &&
     draft.description?.trim() &&
@@ -27,14 +23,28 @@ function determineStatus(draft) {
     draft.steps.length > 0;
 
   if (!hasRequiredFields) {
-    return 'draft';
+    return false;
   }
 
   const allStepsComplete = draft.steps.every(
     (step) => step.action?.trim() && step.result?.trim()
   );
 
-  return allStepsComplete ? 'ready' : 'draft';
+  return allStepsComplete;
+}
+
+/**
+ * Determine status - only 'draft' or 'imported'
+ * - 'imported' is permanent once set
+ * - Everything else is 'draft'
+ */
+function determineStatus(draft, existingStatus) {
+  // Imported status is permanent
+  if (existingStatus === 'imported' || draft.status === 'imported') {
+    return 'imported';
+  }
+  // Everything else is draft
+  return 'draft';
 }
 
 /**
@@ -43,7 +53,11 @@ function determineStatus(draft) {
  */
 router.get('/', (req, res) => {
   try {
-    const drafts = listDrafts();
+    const drafts = listDrafts().map((draft) => ({
+      ...draft,
+      // Compute isComplete if not present (for older drafts)
+      isComplete: draft.isComplete !== undefined ? draft.isComplete : isComplete(draft),
+    }));
     res.json({ success: true, drafts });
   } catch (error) {
     res.status(500).json({
@@ -64,7 +78,12 @@ router.get('/:id', (req, res) => {
     if (!draft) {
       return res.status(404).json({ success: false, error: 'Draft not found' });
     }
-    res.json({ success: true, draft });
+    // Compute isComplete if not present
+    const draftWithComplete = {
+      ...draft,
+      isComplete: draft.isComplete !== undefined ? draft.isComplete : isComplete(draft),
+    };
+    res.json({ success: true, draft: draftWithComplete });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -91,7 +110,8 @@ router.post('/', (req, res) => {
     const newDraft = {
       ...draft,
       id,
-      status: determineStatus(draft),
+      status: determineStatus(draft, null),
+      isComplete: isComplete(draft),
       createdAt: now,
       updatedAt: now,
     };
@@ -134,7 +154,8 @@ router.put('/:id', (req, res) => {
     const updatedDraft = {
       ...draft,
       id,
-      status: determineStatus(draft),
+      status: determineStatus(draft, existing.status),
+      isComplete: isComplete(draft),
       createdAt: existing.createdAt,
       updatedAt: Date.now(),
     };
@@ -184,7 +205,7 @@ router.patch('/:id/status', (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['draft', 'ready', 'imported'].includes(status)) {
+    if (!['draft', 'imported'].includes(status)) {
       return res.status(400).json({ success: false, error: 'Invalid status' });
     }
 
@@ -237,10 +258,17 @@ router.post('/:id/import', async (req, res) => {
       });
     }
 
-    if (draft.status === 'draft') {
+    if (draft.status === 'imported') {
       return res.status(400).json({
         success: false,
-        error: 'Cannot import incomplete draft. Please complete all required fields.',
+        error: 'This test case has already been imported.',
+      });
+    }
+
+    if (!isComplete(draft)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot import incomplete test case. Please complete all required fields.',
       });
     }
 
@@ -301,10 +329,16 @@ router.post('/bulk-import', async (req, res) => {
           error: `Draft ${id} not found`,
         });
       }
-      if (draft.status === 'draft') {
+      if (draft.status === 'imported') {
         return res.status(400).json({
           success: false,
-          error: `Cannot import incomplete draft: ${draft.summary || id}`,
+          error: `Test case already imported: ${draft.summary || id}`,
+        });
+      }
+      if (!isComplete(draft)) {
+        return res.status(400).json({
+          success: false,
+          error: `Cannot import incomplete test case: ${draft.summary || id}`,
         });
       }
       drafts.push(draft);

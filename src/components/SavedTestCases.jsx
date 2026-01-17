@@ -38,9 +38,13 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
         case 'name':
           return (a.summary || '').localeCompare(b.summary || '');
         case 'status':
-          // Order: ready, draft, imported
-          const statusOrder = { ready: 0, draft: 1, imported: 2 };
-          return (statusOrder[a.status] || 1) - (statusOrder[b.status] || 1);
+          // Order: complete drafts first, then incomplete drafts, then imported
+          const getOrder = (tc) => {
+            if (tc.status === 'imported') return 2;
+            if (tc.isComplete) return 0;
+            return 1;
+          };
+          return getOrder(a) - getOrder(b);
         case 'newest':
         default:
           return (b.updatedAt || 0) - (a.updatedAt || 0);
@@ -89,8 +93,8 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
   async function handleBulkImport() {
     if (selectedIds.size === 0) return;
 
-    // Only ready TCs can be selected
-    const selected = testCases.filter((tc) => selectedIds.has(tc.id) && tc.status === 'ready');
+    // Only complete, non-imported TCs can be selected
+    const selected = testCases.filter((tc) => selectedIds.has(tc.id) && tc.isComplete && tc.status !== 'imported');
     if (selected.length === 0) return;
 
     setBulkImporting(true);
@@ -126,20 +130,26 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
     });
   }
 
-  function getStatusBadge(status) {
-    switch (status) {
-      case 'ready':
-        return <span className="badge badge-success">Ready</span>;
-      case 'imported':
-        return <span className="badge badge-imported">Imported</span>;
-      case 'draft':
-      default:
-        return <span className="badge badge-draft">Draft</span>;
+  function getStatusBadge(tc) {
+    if (tc.status === 'imported') {
+      return <span className="badge badge-imported">Imported</span>;
     }
+    if (tc.isComplete) {
+      return (
+        <span className="badge badge-success flex items-center gap-1">
+          Draft
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      );
+    }
+    return <span className="badge badge-draft">Draft</span>;
   }
 
   function canSelect(tc) {
-    return tc.status === 'ready';
+    // Can select if complete and not already imported
+    return tc.isComplete && tc.status !== 'imported';
   }
 
   if (testCases.length === 0) {
@@ -206,7 +216,7 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="name">Name A-Z</option>
-            <option value="status">Ready first</option>
+            <option value="status">Complete first</option>
           </select>
         </div>
       </div>
@@ -271,10 +281,10 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
                 onClick={() => canSelect(tc) && toggleSelect(tc.id)}
                 disabled={!canSelect(tc)}
                 title={
-                  tc.status === 'ready'
-                    ? 'Select for import'
-                    : tc.status === 'imported'
-                      ? 'Already imported'
+                  tc.status === 'imported'
+                    ? 'Already imported'
+                    : tc.isComplete
+                      ? 'Select for import'
                       : 'Complete all required fields to import'
                 }
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
@@ -298,7 +308,7 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
                   <span className="font-medium text-gray-900 dark:text-white truncate">
                     {tc.summary || 'Untitled'}
                   </span>
-                  {getStatusBadge(tc.status)}
+                  {getStatusBadge(tc)}
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                   <span>{tc.testType || 'Manual'}</span>

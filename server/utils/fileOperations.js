@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 
 export const CONFIG_PATH = path.join(PROJECT_ROOT, 'config', 'xray-config.json');
+export const SETTINGS_PATH = path.join(PROJECT_ROOT, 'config', 'settings.json');
 export const DRAFTS_DIR = path.join(PROJECT_ROOT, 'testCases');
 
 /**
@@ -43,6 +44,34 @@ export function writeConfig(config) {
   }
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
   return CONFIG_PATH;
+}
+
+/**
+ * Read settings file
+ */
+export function readSettings() {
+  if (!fs.existsSync(SETTINGS_PATH)) {
+    return { functionalAreas: [], labels: [] };
+  }
+  try {
+    const content = fs.readFileSync(SETTINGS_PATH, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error reading settings:', error);
+    return { functionalAreas: [] };
+  }
+}
+
+/**
+ * Write settings file
+ */
+export function writeSettings(settings) {
+  const dir = path.dirname(SETTINGS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+  return SETTINGS_PATH;
 }
 
 /**
