@@ -16,13 +16,18 @@ npm install
 
 ## Usage
 
+**Development:**
 ```bash
 npm run dev
 ```
+Frontend: http://localhost:5173 (hot reload)
+Backend: http://localhost:3001
 
-Opens at http://localhost:5173
-
-Backend runs on http://localhost:3001
+**Production:**
+```bash
+npm run build && npm start
+```
+App: http://localhost:3001
 
 ## Setup
 
