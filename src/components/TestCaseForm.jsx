@@ -481,18 +481,18 @@ function TestCaseForm({
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={handleReset} className="btn btn-ghost">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <button type="button" onClick={handleReset} className="btn btn-ghost order-3 sm:order-1">
               Reset
             </button>
-            <button type="button" onClick={handleSaveDraft} disabled={!hasFormData()} className="btn btn-secondary">
+            <button type="button" onClick={handleSaveDraft} disabled={!hasFormData()} className="btn btn-secondary order-2">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               {editingId ? 'Update Draft' : 'Save Draft'}
             </button>
-            <button type="submit" disabled={loading} className="btn btn-primary flex-1">
+            <button type="submit" disabled={loading} className="btn btn-primary sm:flex-1 order-1 sm:order-3">
               {loading ? (
                 <>
                   <span className="spinner"></span>

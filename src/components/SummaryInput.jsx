@@ -151,9 +151,9 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
         </div>
       )}
 
-      <div className="grid grid-cols-12 gap-3">
-        {/* Functional Area - 5 cols */}
-        <div className="col-span-5 relative" ref={dropdownRef}>
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        {/* Functional Area - 5 cols on desktop, full on mobile */}
+        <div className="sm:col-span-5 relative" ref={dropdownRef}>
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
             Functional Area
           </label>
@@ -234,8 +234,8 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
           )}
         </div>
 
-        {/* Layer Toggle - 2 cols */}
-        <div className="col-span-2">
+        {/* Layer Toggle - 2 cols on desktop */}
+        <div className="sm:col-span-2">
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
             Layer
           </label>
@@ -267,8 +267,8 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
           </div>
         </div>
 
-        {/* Title - 5 cols */}
-        <div className="col-span-5">
+        {/* Title - 5 cols on desktop, full on mobile */}
+        <div className="sm:col-span-5">
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
             Title
           </label>

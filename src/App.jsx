@@ -186,7 +186,7 @@ function App() {
         onReconfigure={handleReconfigure}
       />
 
-      <main className="flex-1 p-6 flex justify-center items-start">
+      <main className="flex-1 p-3 sm:p-6 flex justify-center items-start">
         <div className="w-full max-w-3xl animate-fade-in">
           {screen === SCREENS.SETUP && (
             <SetupForm onComplete={handleSetupComplete} initialConfig={config} />

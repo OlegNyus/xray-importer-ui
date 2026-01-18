@@ -26,7 +26,7 @@ function Modal({ children, onClose }) {
         }
       }}
     >
-      <div className="card p-6 w-full max-w-md animate-slide-up">
+      <div className="card p-4 sm:p-6 w-full max-w-md mx-3 sm:mx-0 animate-slide-up">
         {children}
       </div>
     </div>

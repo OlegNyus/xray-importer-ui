@@ -170,7 +170,7 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
   return (
     <div>
       {/* Header with search/sort */}
-      <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Saved Test Cases</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -181,19 +181,19 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Show imported toggle */}
           {importedCount > 0 && (
             <button
               onClick={() => setShowImported(!showImported)}
               className={`btn btn-sm ${showImported ? 'btn-secondary' : 'btn-ghost'}`}
             >
-              {showImported ? 'Hide Imported' : `Show Imported (${importedCount})`}
+              {showImported ? 'Hide' : `+${importedCount}`}
             </button>
           )}
 
           {/* Search */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -203,7 +203,7 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="input pl-9 w-44"
+              className="input pl-9 w-full sm:w-36"
             />
           </div>
 
@@ -211,12 +211,12 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="select w-36"
+            className="select w-full sm:w-32"
           >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="name">Name A-Z</option>
-            <option value="status">Complete first</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="name">A-Z</option>
+            <option value="status">Complete</option>
           </select>
         </div>
       </div>

@@ -214,26 +214,26 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => handleTabChange('create')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors
+          className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 text-sm font-medium transition-colors
             ${activeTab === 'create'
               ? 'text-primary-600 border-b-2 border-primary-500 bg-primary-50 dark:bg-primary-900/20'
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="hidden sm:block">
             <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          Create New
+          + Create New
         </button>
         <button
           onClick={() => handleTabChange('saved')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors
+          className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 text-sm font-medium transition-colors
             ${activeTab === 'saved'
               ? 'text-primary-600 border-b-2 border-primary-500 bg-primary-50 dark:bg-primary-900/20'
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="hidden sm:block">
             <path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M6 3v4h6V3" stroke="currentColor" strokeWidth="1.5"/>
           </svg>
@@ -247,7 +247,7 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
       </div>
 
       {/* Tab Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {loading && activeTab === 'saved' && (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>

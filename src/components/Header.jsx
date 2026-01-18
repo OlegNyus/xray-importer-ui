@@ -6,8 +6,8 @@ function Header({ isConfigured, config, darkMode, onToggleDarkMode, onReconfigur
 
   return (
     <>
-      <header className="flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M4 9L8 13L14 5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -16,7 +16,7 @@ function Header({ isConfigured, config, darkMode, onToggleDarkMode, onReconfigur
           <span className="font-semibold text-lg text-gray-900 dark:text-white">RayDrop</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Theme toggle */}
           <button
             onClick={onToggleDarkMode}
@@ -51,8 +51,8 @@ function Header({ isConfigured, config, darkMode, onToggleDarkMode, onReconfigur
 
           {/* Status indicator */}
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-            <span>{isConfigured ? 'Connected to Xray' : 'Not configured'}</span>
+            <span className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-emerald-500' : 'bg-gray-400'}`} title={isConfigured ? 'Connected to Xray' : 'Not configured'}></span>
+            <span className="hidden sm:inline">{isConfigured ? 'Connected to Xray' : 'Not configured'}</span>
           </div>
         </div>
       </header>
