@@ -210,6 +210,16 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
 
   return (
     <div className="card">
+      {/* Header */}
+      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          Create Test Cases
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+          Build and import test cases to Xray Cloud
+        </p>
+      </div>
+
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button

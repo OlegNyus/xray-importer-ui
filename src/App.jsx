@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import SetupForm from './components/SetupForm';
-import SetupSuccess from './components/SetupSuccess';
 import TestCaseBuilder from './components/TestCaseBuilder';
 import SuccessScreen from './components/SuccessScreen';
 import ErrorScreen from './components/ErrorScreen';
@@ -12,15 +11,14 @@ import { fetchConfig, deleteDraft, updateDraftStatus, migrateDrafts } from './ut
 const STORAGE_KEY = 'raydrop_saved_test_cases';
 
 const SCREENS = {
-  SETUP: 'setup',
-  SETUP_SUCCESS: 'setupSuccess',
+  WELCOME: 'welcome',
   BUILDER: 'builder',
   SUCCESS: 'success',
   ERROR: 'error',
 };
 
 function App() {
-  const [screen, setScreen] = useState(SCREENS.SETUP);
+  const [screen, setScreen] = useState(SCREENS.WELCOME);
   const [config, setConfig] = useState(null);
   const [isConfigured, setIsConfigured] = useState(false);
   const [lastResult, setLastResult] = useState(null);
@@ -47,17 +45,32 @@ function App() {
   async function checkConfig() {
     try {
       const result = await fetchConfig();
-      if (result.exists) {
+      if (result.exists && isConfigComplete(result.config)) {
         setConfig(result.config);
         setIsConfigured(true);
         setScreen(SCREENS.BUILDER);
 
         // Check for localStorage migration
         checkMigration();
+      } else {
+        // Config missing or incomplete - show welcome page
+        setScreen(SCREENS.WELCOME);
       }
     } catch (error) {
       console.error('Failed to check config:', error);
+      setScreen(SCREENS.WELCOME);
     }
+  }
+
+  // Check if all required config fields are present
+  function isConfigComplete(config) {
+    if (!config) return false;
+    return !!(
+      config.xrayClientId &&
+      config.xrayClientSecret &&
+      config.jiraBaseUrl &&
+      config.projectKey
+    );
   }
 
   function checkMigration() {
@@ -119,7 +132,7 @@ function App() {
   function handleSetupComplete(newConfig) {
     setConfig(newConfig);
     setIsConfigured(true);
-    setScreen(SCREENS.SETUP_SUCCESS);
+    setScreen(SCREENS.BUILDER);
   }
 
   function handleImportSuccess(result) {
@@ -135,7 +148,7 @@ function App() {
   function handleReconfigure() {
     setIsConfigured(false);
     setConfig(null);
-    setScreen(SCREENS.SETUP);
+    setScreen(SCREENS.WELCOME);
   }
 
   function handleCreateAnother() {
@@ -188,12 +201,8 @@ function App() {
 
       <main className="flex-1 p-3 sm:p-6 flex justify-center items-start">
         <div className="w-full max-w-3xl animate-fade-in">
-          {screen === SCREENS.SETUP && (
+          {screen === SCREENS.WELCOME && (
             <SetupForm onComplete={handleSetupComplete} initialConfig={config} />
-          )}
-
-          {screen === SCREENS.SETUP_SUCCESS && (
-            <SetupSuccess onContinue={() => setScreen(SCREENS.BUILDER)} />
           )}
 
           {screen === SCREENS.BUILDER && (
