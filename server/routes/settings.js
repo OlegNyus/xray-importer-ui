@@ -4,8 +4,14 @@ import { readSettings, writeSettings } from '../utils/fileOperations.js';
 const router = express.Router();
 
 /**
- * GET /api/settings
- * Get all settings
+ * @swagger
+ * /settings:
+ *   get:
+ *     summary: Get all settings
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: Settings retrieved
  */
 router.get('/', (req, res) => {
   try {
@@ -21,8 +27,25 @@ router.get('/', (req, res) => {
 });
 
 /**
- * PUT /api/settings
- * Update settings
+ * @swagger
+ * /settings:
+ *   put:
+ *     summary: Update all settings
+ *     tags: [Settings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               settings:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Settings saved
+ *       400:
+ *         description: Settings required
  */
 router.put('/', (req, res) => {
   try {
@@ -42,8 +65,25 @@ router.put('/', (req, res) => {
 });
 
 /**
- * GET /api/settings/functional-areas
- * Get functional areas
+ * @swagger
+ * /settings/functional-areas:
+ *   get:
+ *     summary: Get functional areas
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: List of functional areas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 areas:
+ *                   type: array
+ *                   items:
+ *                     type: string
  */
 router.get('/functional-areas', (req, res) => {
   try {
@@ -58,8 +98,27 @@ router.get('/functional-areas', (req, res) => {
 });
 
 /**
- * PUT /api/settings/functional-areas
- * Update functional areas
+ * @swagger
+ * /settings/functional-areas:
+ *   put:
+ *     summary: Update functional areas
+ *     tags: [Settings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               areas:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Areas saved
+ *       400:
+ *         description: Areas must be an array
  */
 router.put('/functional-areas', (req, res) => {
   try {
@@ -80,8 +139,25 @@ router.put('/functional-areas', (req, res) => {
 });
 
 /**
- * GET /api/settings/labels
- * Get labels
+ * @swagger
+ * /settings/labels:
+ *   get:
+ *     summary: Get labels
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: List of labels
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 labels:
+ *                   type: array
+ *                   items:
+ *                     type: string
  */
 router.get('/labels', (req, res) => {
   try {
@@ -96,8 +172,27 @@ router.get('/labels', (req, res) => {
 });
 
 /**
- * PUT /api/settings/labels
- * Update labels
+ * @swagger
+ * /settings/labels:
+ *   put:
+ *     summary: Update labels
+ *     tags: [Settings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               labels:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Labels saved
+ *       400:
+ *         description: Labels must be an array
  */
 router.put('/labels', (req, res) => {
   try {
@@ -118,8 +213,25 @@ router.put('/labels', (req, res) => {
 });
 
 /**
- * GET /api/settings/collections
- * Get collections
+ * @swagger
+ * /settings/collections:
+ *   get:
+ *     summary: Get collections
+ *     tags: [Collections]
+ *     responses:
+ *       200:
+ *         description: List of collections
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 collections:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Collection'
  */
 router.get('/collections', (req, res) => {
   try {
@@ -134,8 +246,27 @@ router.get('/collections', (req, res) => {
 });
 
 /**
- * PUT /api/settings/collections
- * Update collections
+ * @swagger
+ * /settings/collections:
+ *   put:
+ *     summary: Update all collections
+ *     tags: [Collections]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               collections:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/Collection'
+ *     responses:
+ *       200:
+ *         description: Collections saved
+ *       400:
+ *         description: Collections must be an array
  */
 router.put('/collections', (req, res) => {
   try {
@@ -156,8 +287,40 @@ router.put('/collections', (req, res) => {
 });
 
 /**
- * POST /api/settings/collections
- * Create a new collection
+ * @swagger
+ * /settings/collections:
+ *   post:
+ *     summary: Create a collection
+ *     tags: [Collections]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Sprint 1
+ *               color:
+ *                 type: string
+ *                 example: '#6366f1'
+ *     responses:
+ *       200:
+ *         description: Collection created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 collection:
+ *                   $ref: '#/components/schemas/Collection'
+ *       400:
+ *         description: Name required
  */
 router.post('/collections', (req, res) => {
   try {
@@ -188,8 +351,23 @@ router.post('/collections', (req, res) => {
 });
 
 /**
- * DELETE /api/settings/collections/:id
- * Delete a collection
+ * @swagger
+ * /settings/collections/{id}:
+ *   delete:
+ *     summary: Delete a collection
+ *     tags: [Collections]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Collection ID
+ *     responses:
+ *       200:
+ *         description: Collection deleted
+ *       404:
+ *         description: Collection not found
  */
 router.delete('/collections/:id', (req, res) => {
   try {

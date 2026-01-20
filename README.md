@@ -154,6 +154,10 @@ server/              # Express backend
 src/                 # React frontend
 ```
 
+## API Documentation
+
+Interactive API docs available at `/api-docs` when server is running.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
