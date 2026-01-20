@@ -5,6 +5,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp } from '../app.js';
 
+// Mock xrayClient to avoid real API calls during tests
+vi.mock('../utils/xrayClient.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    validateCredentials: vi.fn().mockResolvedValue({ success: true }),
+  };
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
@@ -134,6 +143,30 @@ describe('Server API', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
+    });
+
+    it('POST /api/config should reject invalid credentials', async () => {
+      // Import and mock validateCredentials to return failure for this test
+      const xrayClient = await import('../utils/xrayClient.js');
+      xrayClient.validateCredentials.mockResolvedValueOnce({
+        success: false,
+        error: 'Invalid Client ID or Client Secret',
+      });
+
+      const config = {
+        xrayClientId: 'invalid-client-id',
+        xrayClientSecret: 'invalid-secret',
+        jiraBaseUrl: 'https://test.atlassian.net/',
+        projectKey: 'TEST',
+      };
+
+      const res = await request(app)
+        .post('/api/config')
+        .send(config);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toContain('Invalid');
     });
 
     it('POST /api/config should reject invalid URL', async () => {

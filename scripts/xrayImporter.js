@@ -264,7 +264,7 @@ async function validateAndFixConfig(config) {
       key: 'projectKey',
       prompt: 'Enter your Jira project key: ',
       validator: isValidProjectKey,
-      errorMsg: 'Project key must be uppercase letters only (e.g. WCP, TEST)',
+      errorMsg: 'Project key must be uppercase letters only (e.g. PROJ, TEST)',
     },
     {
       key: 'testCaseFile',

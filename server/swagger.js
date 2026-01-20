@@ -21,7 +21,7 @@ const options = {
           properties: {
             projectKey: {
               type: 'string',
-              example: 'WCP',
+              example: 'PROJ',
             },
             xrayClientId: {
               type: 'string',

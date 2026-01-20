@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
-import { importToXray } from '../utils/xrayClient.js';
+import { importToXray, validateCredentials } from '../utils/xrayClient.js';
 import * as fileOps from '../utils/fileOperations.js';
 
 vi.mock('axios');
@@ -329,6 +329,70 @@ describe('xrayClient', () => {
         data: '',
         result: '',
       });
+    });
+  });
+
+  describe('validateCredentials', () => {
+    it('should return success when credentials are valid', async () => {
+      axios.post.mockResolvedValueOnce({ data: 'valid-token' });
+
+      const result = await validateCredentials({
+        xrayClientId: 'valid-id',
+        xrayClientSecret: 'valid-secret',
+      });
+
+      expect(result.success).toBe(true);
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://xray.cloud.getxray.app/api/v2/authenticate',
+        {
+          client_id: 'valid-id',
+          client_secret: 'valid-secret',
+        },
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 30000,
+        })
+      );
+    });
+
+    it('should return error for invalid credentials', async () => {
+      const authError = new Error('Invalid client credentials');
+      authError.response = {
+        data: { error: 'Invalid client credentials' },
+      };
+      axios.post.mockRejectedValueOnce(authError);
+
+      const result = await validateCredentials({
+        xrayClientId: 'invalid-id',
+        xrayClientSecret: 'invalid-secret',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Invalid Client ID or Client Secret');
+    });
+
+    it('should return error for network failure', async () => {
+      axios.post.mockRejectedValueOnce(new Error('Network timeout'));
+
+      const result = await validateCredentials({
+        xrayClientId: 'test-id',
+        xrayClientSecret: 'test-secret',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Authentication failed: Network timeout');
+    });
+
+    it('should return error when no token received', async () => {
+      axios.post.mockResolvedValueOnce({ data: null });
+
+      const result = await validateCredentials({
+        xrayClientId: 'test-id',
+        xrayClientSecret: 'test-secret',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Authentication failed: No token received');
     });
   });
 });

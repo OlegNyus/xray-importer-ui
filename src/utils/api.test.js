@@ -35,7 +35,7 @@ describe('API utilities', () => {
 
   describe('fetchConfig', () => {
     it('should fetch config successfully', async () => {
-      const mockConfig = { exists: true, config: { projectKey: 'WCP' } };
+      const mockConfig = { exists: true, config: { projectKey: 'PROJ' } };
       fetch.mockResolvedValueOnce(mockSuccessResponse(mockConfig));
 
       const result = await fetchConfig();

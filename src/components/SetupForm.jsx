@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { saveConfig } from '../utils/api';
 
-function SetupForm({ onComplete, initialConfig }) {
+function SetupForm({ onComplete, onCancel, initialConfig, isEditing }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
-    xrayClientId: '',
-    xrayClientSecret: '',
-    jiraBaseUrl: initialConfig?.jiraBaseUrl || 'https://whelen.atlassian.net/',
-    projectKey: initialConfig?.projectKey || 'WCP',
+    xrayClientId: initialConfig?.xrayClientId || '',
+    xrayClientSecret: initialConfig?.xrayClientSecret || '',
+    jiraBaseUrl: initialConfig?.jiraBaseUrl || '',
+    projectKey: initialConfig?.projectKey || '',
   });
 
   function handleChange(e) {
@@ -75,7 +75,7 @@ function SetupForm({ onComplete, initialConfig }) {
         setErrors({ submit: result.error || 'Failed to save configuration' });
       }
     } catch (error) {
-      setErrors({ submit: 'Failed to save configuration' });
+      setErrors({ submit: error.message || 'Failed to save configuration' });
     } finally {
       setLoading(false);
     }
@@ -85,10 +85,12 @@ function SetupForm({ onComplete, initialConfig }) {
     <div className="card p-8">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome to RayDrop
+          {isEditing ? 'Edit Configuration' : 'Welcome to RayDrop'}
         </h1>
         <p className="text-gray-500 dark:text-gray-400">
-          Configure your Xray Cloud credentials to get started
+          {isEditing
+            ? 'Update your Xray Cloud credentials'
+            : 'Configure your Xray Cloud credentials to get started'}
         </p>
       </div>
 
@@ -122,7 +124,7 @@ function SetupForm({ onComplete, initialConfig }) {
               Client Secret <span className="text-red-500">*</span>
             </label>
             <input
-              type="password"
+              type="text"
               name="xrayClientSecret"
               value={formData.xrayClientSecret}
               onChange={handleChange}
@@ -166,7 +168,7 @@ function SetupForm({ onComplete, initialConfig }) {
                 name="projectKey"
                 value={formData.projectKey}
                 onChange={handleChange}
-                placeholder="e.g. WCP"
+                placeholder="e.g. PROJ"
                 className={`input ${errors.projectKey ? 'input-error' : ''}`}
               />
               {errors.projectKey && (
@@ -183,20 +185,31 @@ function SetupForm({ onComplete, initialConfig }) {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary w-full"
-        >
-          {loading ? (
-            <>
-              <span className="spinner"></span>
-              Validating...
-            </>
-          ) : (
-            'Validate & Save Configuration'
+        <div className={isEditing ? 'flex gap-3' : ''}>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="btn btn-secondary flex-1"
+            >
+              Cancel
+            </button>
           )}
-        </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`btn btn-primary ${isEditing ? 'flex-1' : 'w-full'}`}
+          >
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Validating...
+              </>
+            ) : (
+              isEditing ? 'Update Configuration' : 'Validate & Save Configuration'
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );

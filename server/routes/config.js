@@ -1,5 +1,6 @@
 import express from 'express';
 import { configExists, readConfig, writeConfig, CONFIG_PATH } from '../utils/fileOperations.js';
+import { validateCredentials } from '../utils/xrayClient.js';
 
 const router = express.Router();
 
@@ -42,12 +43,12 @@ router.get('/', (req, res) => {
       });
     }
 
-    // Don't send full credentials, just masked versions
+    // Return full config (local app - no need to mask)
     res.json({
       exists: true,
       config: {
-        xrayClientId: maskValue(config.xrayClientId),
-        xrayClientSecret: maskValue(config.xrayClientSecret),
+        xrayClientId: config.xrayClientId,
+        xrayClientSecret: config.xrayClientSecret,
         jiraBaseUrl: config.jiraBaseUrl,
         projectKey: config.projectKey,
       },
@@ -99,7 +100,7 @@ router.get('/', (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { xrayClientId, xrayClientSecret, jiraBaseUrl, projectKey } = req.body;
 
@@ -136,7 +137,20 @@ router.post('/', (req, res) => {
       });
     }
 
-    // Save config
+    // Validate credentials against Xray API
+    const validationResult = await validateCredentials({
+      xrayClientId: xrayClientId.trim(),
+      xrayClientSecret: xrayClientSecret.trim(),
+    });
+
+    if (!validationResult.success) {
+      return res.status(401).json({
+        success: false,
+        error: validationResult.error || 'Invalid credentials',
+      });
+    }
+
+    // Save config only if credentials are valid
     const config = {
       xrayClientId: xrayClientId.trim(),
       xrayClientSecret: xrayClientSecret.trim(),
@@ -159,14 +173,5 @@ router.post('/', (req, res) => {
     });
   }
 });
-
-/**
- * Mask sensitive values for display
- */
-function maskValue(value) {
-  if (!value) return '';
-  if (value.length <= 8) return '••••••••';
-  return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);
-}
 
 export default router;
