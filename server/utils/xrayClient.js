@@ -75,6 +75,40 @@ function toBulkImportFormat(testCases, projectKey) {
 }
 
 /**
+ * Validate Xray credentials by attempting to authenticate
+ * @param {Object} credentials - {xrayClientId, xrayClientSecret}
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function validateCredentials(credentials) {
+  try {
+    const response = await axios.post(
+      XRAY_AUTH_URL,
+      {
+        client_id: credentials.xrayClientId,
+        client_secret: credentials.xrayClientSecret,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      }
+    );
+
+    // If we got a token, credentials are valid
+    if (response.data) {
+      return { success: true };
+    }
+
+    return { success: false, error: 'Authentication failed: No token received' };
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || error.message;
+    if (errorMsg?.includes('Invalid client credentials')) {
+      return { success: false, error: 'Invalid Client ID or Client Secret' };
+    }
+    return { success: false, error: `Authentication failed: ${errorMsg}` };
+  }
+}
+
+/**
  * Import test cases to Xray Cloud
  * @param {Array} testCases - Array of test case objects
  * @returns {Promise<{success: boolean, jobId?: string, error?: string}>}

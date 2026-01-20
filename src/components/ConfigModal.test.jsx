@@ -4,8 +4,8 @@ import ConfigModal from './ConfigModal';
 
 describe('ConfigModal', () => {
   const mockConfig = {
-    xrayClientId: 'test-client-id',
-    xrayClientSecret: 'test-secret',
+    xrayClientId: 'ABC123DEF456GHI789',
+    xrayClientSecret: 'secret123456789xyz',
     jiraBaseUrl: 'https://test.atlassian.net',
     projectKey: 'TEST',
   };
@@ -26,10 +26,12 @@ describe('ConfigModal', () => {
     expect(screen.getByText('Your current Xray Cloud settings')).toBeInTheDocument();
   });
 
-  it('should display all config values', () => {
+  it('should display truncated credentials and full other values', () => {
     render(<ConfigModal {...defaultProps} />);
-    expect(screen.getByText('test-client-id')).toBeInTheDocument();
-    expect(screen.getByText('test-secret')).toBeInTheDocument();
+    // Credentials should be truncated (first 6 + ... + last 6)
+    expect(screen.getByText('ABC123...GHI789')).toBeInTheDocument();
+    expect(screen.getByText('secret...789xyz')).toBeInTheDocument();
+    // Other values shown in full
     expect(screen.getByText('https://test.atlassian.net')).toBeInTheDocument();
     expect(screen.getByText('TEST')).toBeInTheDocument();
   });

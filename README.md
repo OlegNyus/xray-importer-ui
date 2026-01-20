@@ -39,7 +39,7 @@ App: http://localhost:3001
    - **Client ID** - Xray API Client ID
    - **Client Secret** - Xray API Client Secret
    - **Jira Base URL** - e.g., `https://yourcompany.atlassian.net/`
-   - **Project Key** - Jira project key (uppercase, e.g., `WCP`)
+   - **Project Key** - Jira project key (uppercase, e.g., `PROJ`)
 
 3. Click "Validate & Save Configuration"
 

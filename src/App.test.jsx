@@ -237,7 +237,7 @@ describe('App', () => {
     });
   });
 
-  it('should handle reconfigure from header', async () => {
+  it('should handle reconfigure from header (edit mode)', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
     render(<App />);
 
@@ -249,7 +249,8 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('setup-form')).toBeInTheDocument();
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('no');
+      // isConfigured stays true when editing existing config
+      expect(screen.getByTestId('is-configured')).toHaveTextContent('yes');
     });
   });
 

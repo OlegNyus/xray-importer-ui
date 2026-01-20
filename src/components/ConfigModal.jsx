@@ -15,8 +15,8 @@ function ConfigModal({ config, onClose, onEdit }) {
       </div>
 
       <div className="space-y-3 mb-6">
-        <ConfigItem label="Client ID" value={config?.xrayClientId} />
-        <ConfigItem label="Client Secret" value={config?.xrayClientSecret} />
+        <ConfigItem label="Client ID" value={config?.xrayClientId} truncate />
+        <ConfigItem label="Client Secret" value={config?.xrayClientSecret} truncate />
         <ConfigItem label="Jira Base URL" value={config?.jiraBaseUrl} />
         <ConfigItem label="Project Key" value={config?.projectKey} />
       </div>
@@ -36,12 +36,16 @@ function ConfigModal({ config, onClose, onEdit }) {
   );
 }
 
-function ConfigItem({ label, value }) {
+function ConfigItem({ label, value, truncate }) {
+  const displayValue = truncate && value && value.length > 12
+    ? `${value.substring(0, 6)}...${value.substring(value.length - 6)}`
+    : value;
+
   return (
     <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
       <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
       <span className="text-sm text-gray-900 dark:text-white font-mono">
-        {value || '-'}
+        {displayValue || '-'}
       </span>
     </div>
   );

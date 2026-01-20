@@ -21,6 +21,7 @@ function App() {
   const [screen, setScreen] = useState(SCREENS.WELCOME);
   const [config, setConfig] = useState(null);
   const [isConfigured, setIsConfigured] = useState(false);
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [toast, setToast] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
@@ -132,6 +133,12 @@ function App() {
   function handleSetupComplete(newConfig) {
     setConfig(newConfig);
     setIsConfigured(true);
+    setIsEditingConfig(false);
+    setScreen(SCREENS.BUILDER);
+  }
+
+  function handleCancelEdit() {
+    setIsEditingConfig(false);
     setScreen(SCREENS.BUILDER);
   }
 
@@ -146,8 +153,7 @@ function App() {
   }
 
   function handleReconfigure() {
-    setIsConfigured(false);
-    setConfig(null);
+    setIsEditingConfig(true);
     setScreen(SCREENS.WELCOME);
   }
 
@@ -202,7 +208,12 @@ function App() {
       <main className="flex-1 p-3 sm:p-6 flex justify-center items-start">
         <div className="w-full max-w-3xl animate-fade-in">
           {screen === SCREENS.WELCOME && (
-            <SetupForm onComplete={handleSetupComplete} initialConfig={config} />
+            <SetupForm
+              onComplete={handleSetupComplete}
+              onCancel={handleCancelEdit}
+              initialConfig={config}
+              isEditing={isEditingConfig}
+            />
           )}
 
           {screen === SCREENS.BUILDER && (
