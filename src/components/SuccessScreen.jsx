@@ -25,12 +25,8 @@ function SuccessScreen({ result, config, onCreateAnother, onPostImportDelete, on
   }
 
   function handleClose() {
-    // When modal is dismissed (clicked outside), mark as imported to prevent re-importing
-    const ids = isBulkImport ? result.draftIds : result.draftId;
-    if (ids) {
-      onPostImportKeep(ids);
-      setPostImportHandled(true);
-    }
+    // Test case is already marked as imported on the server
+    // Just close the modal - user chose not to delete local copy
     setShowPostImportModal(false);
   }
 

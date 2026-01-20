@@ -281,6 +281,17 @@ router.post('/:id/import', async (req, res) => {
       steps: draft.steps || [],
     }]);
 
+    // Mark as imported immediately on success
+    if (result.success) {
+      const updatedDraft = {
+        ...draft,
+        status: 'imported',
+        importedAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      writeDraft(draft.id, updatedDraft);
+    }
+
     res.json({
       success: result.success,
       jobId: result.jobId,
@@ -354,6 +365,19 @@ router.post('/bulk-import', async (req, res) => {
     }));
 
     const result = await importToXray(testCasesForImport);
+
+    // Mark all drafts as imported immediately on success
+    if (result.success) {
+      for (const draft of drafts) {
+        const updatedDraft = {
+          ...draft,
+          status: 'imported',
+          importedAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        writeDraft(draft.id, updatedDraft);
+      }
+    }
 
     res.json({
       success: result.success,
