@@ -6,6 +6,7 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
   const [layer, setLayer] = useState('UI');
   const [title, setTitle] = useState('');
   const [areas, setAreas] = useState([]);
+  const [areasLoaded, setAreasLoaded] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [newArea, setNewArea] = useState('');
   const [showAddNew, setShowAddNew] = useState(false);
@@ -23,6 +24,8 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
         }
       } catch (e) {
         console.error('Failed to load functional areas:', e);
+      } finally {
+        setAreasLoaded(true);
       }
     }
     loadAreas();
@@ -49,24 +52,28 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
 
     const parts = value.split(' | ');
     if (parts.length === 3) {
+      // Full format: "Area | Layer | Title"
       setFunctionalArea(parts[0]);
       setLayer(parts[1] === 'API' ? 'API' : 'UI');
       setTitle(parts[2]);
       initializedRef.current = true;
     } else if (parts.length === 1 && value.trim()) {
-      // Single value - check if it's a known functional area
+      // Single value - wait for areas to load before deciding
+      if (!areasLoaded) return; // Don't parse yet, wait for areas to load
+
+      // Check if it's a known functional area
       if (areas.includes(value.trim())) {
         setFunctionalArea(value.trim());
         setTitle('');
       } else {
-        // Legacy format - treat as title only
+        // Legacy format or unknown - treat as title only
         setTitle(value);
         setFunctionalArea('');
       }
       setLayer('UI');
       initializedRef.current = true;
     }
-  }, [value, editingId, areas]);
+  }, [value, editingId, areas, areasLoaded]);
 
   // Close dropdown on outside click
   useEffect(() => {
