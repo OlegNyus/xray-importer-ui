@@ -225,6 +225,79 @@ describe('Server API', () => {
         expect(res.body.success).toBe(false);
       });
     });
+
+    describe('Collections', () => {
+      let testCollectionId;
+
+      it('GET /api/settings/collections should return collections', async () => {
+        const res = await request(app).get('/api/settings/collections');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(Array.isArray(res.body.collections)).toBe(true);
+      });
+
+      it('POST /api/settings/collections should create collection', async () => {
+        const res = await request(app)
+          .post('/api/settings/collections')
+          .send({ name: 'Test Collection', color: '#ff0000' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.collection.name).toBe('Test Collection');
+        expect(res.body.collection.color).toBe('#ff0000');
+        expect(res.body.collection.id).toBeDefined();
+        testCollectionId = res.body.collection.id;
+      });
+
+      it('POST /api/settings/collections should reject missing name', async () => {
+        const res = await request(app)
+          .post('/api/settings/collections')
+          .send({ color: '#ff0000' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+      });
+
+      it('PUT /api/settings/collections should save collections', async () => {
+        const res = await request(app)
+          .put('/api/settings/collections')
+          .send({ collections: [{ id: 'col-1', name: 'Updated', color: '#00ff00' }] });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+      });
+
+      it('PUT /api/settings/collections should reject non-array', async () => {
+        const res = await request(app)
+          .put('/api/settings/collections')
+          .send({ collections: 'not-an-array' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+      });
+
+      it('DELETE /api/settings/collections/:id should delete collection', async () => {
+        // First create a collection to delete
+        const createRes = await request(app)
+          .post('/api/settings/collections')
+          .send({ name: 'To Delete', color: '#000000' });
+        const idToDelete = createRes.body.collection.id;
+
+        const res = await request(app)
+          .delete(`/api/settings/collections/${idToDelete}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+      });
+
+      it('DELETE /api/settings/collections/:id should return 404 for unknown id', async () => {
+        const res = await request(app)
+          .delete('/api/settings/collections/unknown-id');
+
+        expect(res.status).toBe(404);
+        expect(res.body.success).toBe(false);
+      });
+    });
   });
 
   describe('Drafts API', () => {
