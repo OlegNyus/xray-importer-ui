@@ -162,6 +162,13 @@ src/                 # React frontend
 | POST | /api/drafts/:id/import | Import single draft |
 | POST | /api/drafts/bulk-import | Import multiple drafts |
 
+## Testing
+
+```bash
+npm test              # Run tests
+npm run test:coverage # Run tests with coverage report
+```
+
 ## Production
 
 ```bash
