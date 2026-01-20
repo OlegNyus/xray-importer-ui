@@ -90,7 +90,7 @@ function SummaryInput({ value, onChange, error, editingId, disabled }) {
   function buildSummary(area, lyr, ttl) {
     if (!area && !ttl) return '';
     if (!area) return ttl;
-    if (!ttl) return area;
+    if (!ttl) return `${area} | ${lyr}`;
     return `${area} | ${lyr} | ${ttl}`;
   }
 

@@ -167,3 +167,33 @@ export async function saveLabels(labels) {
   });
   return handleResponse(response);
 }
+
+/**
+ * Get collections
+ */
+export async function fetchCollections() {
+  const response = await fetch(`${API_BASE}/settings/collections`);
+  return handleResponse(response);
+}
+
+/**
+ * Create collection
+ */
+export async function createCollection(name, color) {
+  const response = await fetch(`${API_BASE}/settings/collections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, color }),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Delete collection
+ */
+export async function deleteCollection(id) {
+  const response = await fetch(`${API_BASE}/settings/collections/${id}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(response);
+}

@@ -61,7 +61,7 @@ describe('SummaryInput', () => {
     });
 
     fireEvent.click(screen.getByText('Area1'));
-    expect(onChange).toHaveBeenCalledWith('Area1');
+    expect(onChange).toHaveBeenCalledWith('Area1 | UI');
   });
 
   it('should build summary with area, layer and title', async () => {
@@ -151,7 +151,7 @@ describe('SummaryInput', () => {
 
     await waitFor(() => {
       expect(api.saveFunctionalAreas).toHaveBeenCalled();
-      expect(onChange).toHaveBeenCalledWith('NewArea');
+      expect(onChange).toHaveBeenCalledWith('NewArea | UI');
     });
   });
 

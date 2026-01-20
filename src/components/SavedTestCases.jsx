@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react';
 import Modal from './Modal';
-import { bulkImportDrafts } from '../utils/api';
+import { bulkImportDrafts, updateDraft } from '../utils/api';
 
-function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast }) {
+function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast, collections = [], onCollectionsChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [bulkImporting, setBulkImporting] = useState(false);
+  const [filterCollection, setFilterCollection] = useState('all');
+  const [showCollectionMenu, setShowCollectionMenu] = useState(null);
 
   const isImportedView = filterStatus === 'imported';
 
@@ -21,6 +23,15 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
       result = result.filter((tc) => tc.status === 'imported');
     } else {
       result = result.filter((tc) => tc.status !== 'imported');
+    }
+
+    // Filter by collection
+    if (filterCollection !== 'all') {
+      if (filterCollection === 'uncategorized') {
+        result = result.filter((tc) => !tc.collectionId);
+      } else {
+        result = result.filter((tc) => tc.collectionId === filterCollection);
+      }
     }
 
     // Filter by search
@@ -54,7 +65,26 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
     });
 
     return result;
-  }, [testCases, searchQuery, sortOrder, filterStatus]);
+  }, [testCases, searchQuery, sortOrder, filterStatus, filterCollection]);
+
+  // Get collection by ID
+  function getCollection(collectionId) {
+    return collections.find(c => c.id === collectionId);
+  }
+
+  // Assign collection to a test case
+  async function assignCollection(tcId, collectionId) {
+    const tc = testCases.find(t => t.id === tcId);
+    if (!tc) return;
+
+    try {
+      await updateDraft(tcId, { ...tc, collectionId: collectionId || null });
+      onRefresh();
+      setShowCollectionMenu(null);
+    } catch (error) {
+      showToast?.('Failed to update collection');
+    }
+  }
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -197,6 +227,23 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Collection Filter */}
+          {collections.length > 0 && (
+            <select
+              value={filterCollection}
+              onChange={(e) => setFilterCollection(e.target.value)}
+              className="select w-full sm:w-40"
+            >
+              <option value="all">All Collections</option>
+              <option value="uncategorized">Uncategorized</option>
+              {collections.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Search */}
           <div className="relative flex-1 sm:flex-none">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -314,6 +361,15 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
                     {tc.summary || 'Untitled'}
                   </span>
                   {getStatusBadge(tc)}
+                  {/* Collection badge */}
+                  {tc.collectionId && getCollection(tc.collectionId) && (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                      style={{ backgroundColor: getCollection(tc.collectionId).color }}
+                    >
+                      {getCollection(tc.collectionId).name}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                   <span>{tc.testType || 'Manual'}</span>
@@ -336,7 +392,42 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 relative">
+                {/* Collection assignment button */}
+                {tc.status !== 'imported' && collections.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowCollectionMenu(showCollectionMenu === tc.id ? null : tc.id)}
+                      className="btn-icon"
+                      title="Assign to collection"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M2 4h5l2 2h5v7a1 1 0 01-1 1H3a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    {showCollectionMenu === tc.id && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
+                        <button
+                          onClick={() => assignCollection(tc.id, null)}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${!tc.collectionId ? 'text-primary-500' : 'text-gray-700 dark:text-gray-300'}`}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                          Uncategorized
+                        </button>
+                        {collections.map((col) => (
+                          <button
+                            key={col.id}
+                            onClick={() => assignCollection(tc.id, col.id)}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${tc.collectionId === col.id ? 'text-primary-500' : 'text-gray-700 dark:text-gray-300'}`}
+                          >
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }}></span>
+                            {col.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {tc.status !== 'imported' && (
                   <button
                     onClick={() => onEdit(tc.id)}

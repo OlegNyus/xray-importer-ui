@@ -117,4 +117,102 @@ router.put('/labels', (req, res) => {
   }
 });
 
+/**
+ * GET /api/settings/collections
+ * Get collections
+ */
+router.get('/collections', (req, res) => {
+  try {
+    const settings = readSettings();
+    res.json({ success: true, collections: settings.collections || [] });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to read collections',
+    });
+  }
+});
+
+/**
+ * PUT /api/settings/collections
+ * Update collections
+ */
+router.put('/collections', (req, res) => {
+  try {
+    const { collections } = req.body;
+    if (!Array.isArray(collections)) {
+      return res.status(400).json({ success: false, error: 'Collections must be an array' });
+    }
+    const settings = readSettings();
+    settings.collections = collections;
+    writeSettings(settings);
+    res.json({ success: true, collections });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save collections',
+    });
+  }
+});
+
+/**
+ * POST /api/settings/collections
+ * Create a new collection
+ */
+router.post('/collections', (req, res) => {
+  try {
+    const { name, color } = req.body;
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ success: false, error: 'Collection name is required' });
+    }
+    const settings = readSettings();
+    const collections = settings.collections || [];
+
+    const newCollection = {
+      id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      color: color || '#6366f1',
+    };
+
+    collections.push(newCollection);
+    settings.collections = collections;
+    writeSettings(settings);
+
+    res.json({ success: true, collection: newCollection, collections });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create collection',
+    });
+  }
+});
+
+/**
+ * DELETE /api/settings/collections/:id
+ * Delete a collection
+ */
+router.delete('/collections/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const settings = readSettings();
+    const collections = settings.collections || [];
+
+    const index = collections.findIndex(c => c.id === id);
+    if (index === -1) {
+      return res.status(404).json({ success: false, error: 'Collection not found' });
+    }
+
+    collections.splice(index, 1);
+    settings.collections = collections;
+    writeSettings(settings);
+
+    res.json({ success: true, collections });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete collection',
+    });
+  }
+});
+
 export default router;

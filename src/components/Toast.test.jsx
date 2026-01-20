@@ -1,11 +1,33 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import Toast from './Toast';
 
 describe('Toast', () => {
   it('should render message', () => {
     render(<Toast message="Test message" onClose={vi.fn()} />);
     expect(screen.getByText('Test message')).toBeInTheDocument();
+  });
+
+  it('should render with overlay and centered card', () => {
+    const { container } = render(<Toast message="Test" onClose={vi.fn()} />);
+    expect(container.querySelector('.toast-overlay')).toBeInTheDocument();
+    expect(container.querySelector('.toast')).toBeInTheDocument();
+  });
+
+  it('should close when overlay is clicked', () => {
+    const onClose = vi.fn();
+    const { container } = render(<Toast message="Test" onClose={onClose} />);
+
+    fireEvent.click(container.querySelector('.toast-overlay'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('should not close when toast card is clicked', () => {
+    const onClose = vi.fn();
+    const { container } = render(<Toast message="Test" onClose={onClose} />);
+
+    fireEvent.click(container.querySelector('.toast'));
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('should call onClose after default duration', () => {

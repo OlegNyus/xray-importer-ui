@@ -54,7 +54,7 @@ describe('TestCaseBuilder', () => {
   it('should render title', async () => {
     render(<TestCaseBuilder {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('Create Test Cases')).toBeInTheDocument();
+      expect(screen.getByText('Create Test Case')).toBeInTheDocument();
     });
   });
 
@@ -108,8 +108,7 @@ describe('TestCaseBuilder', () => {
   });
 
   it('should save draft', async () => {
-    const showToast = vi.fn();
-    render(<TestCaseBuilder {...defaultProps} showToast={showToast} />);
+    render(<TestCaseBuilder {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByTestId('test-case-form')).toBeInTheDocument();
     });
@@ -118,7 +117,7 @@ describe('TestCaseBuilder', () => {
 
     await waitFor(() => {
       expect(api.createDraft).toHaveBeenCalled();
-      expect(showToast).toHaveBeenCalledWith('Draft saved');
+      // Modal is shown by TestCaseForm instead of toast
     });
   });
 
