@@ -2,21 +2,24 @@ import { useState, useMemo } from 'react';
 import Modal from './Modal';
 import { bulkImportDrafts } from '../utils/api';
 
-function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast }) {
+function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
-  const [showImported, setShowImported] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [bulkImporting, setBulkImporting] = useState(false);
 
+  const isImportedView = filterStatus === 'imported';
+
   // Filter and sort test cases
   const filteredAndSorted = useMemo(() => {
     let result = [...testCases];
 
-    // Filter by status (hide imported by default)
-    if (!showImported) {
+    // Filter by status based on filterStatus prop
+    if (filterStatus === 'imported') {
+      result = result.filter((tc) => tc.status === 'imported');
+    } else {
       result = result.filter((tc) => tc.status !== 'imported');
     }
 
@@ -38,9 +41,8 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
         case 'name':
           return (a.summary || '').localeCompare(b.summary || '');
         case 'status':
-          // Order: complete drafts first, then incomplete drafts, then imported
+          // Order: complete drafts first, then incomplete drafts
           const getOrder = (tc) => {
-            if (tc.status === 'imported') return 2;
             if (tc.isComplete) return 0;
             return 1;
           };
@@ -52,12 +54,7 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
     });
 
     return result;
-  }, [testCases, searchQuery, sortOrder, showImported]);
-
-  // Count imported test cases
-  const importedCount = useMemo(() => {
-    return testCases.filter((tc) => tc.status === 'imported').length;
-  }, [testCases]);
+  }, [testCases, searchQuery, sortOrder, filterStatus]);
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -152,16 +149,32 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
     return tc.isComplete && tc.status !== 'imported';
   }
 
-  if (testCases.length === 0) {
+  // Check if there are any test cases for this view
+  const hasTestCases = testCases.some((tc) =>
+    filterStatus === 'imported' ? tc.status === 'imported' : tc.status !== 'imported'
+  );
+
+  if (!hasTestCases) {
     return (
       <div className="text-center py-12">
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="mx-auto mb-4 text-gray-300 dark:text-gray-600">
-          <rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4"/>
-          <path d="M18 20h12M18 26h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          {isImportedView ? (
+            <path d="M12 24l8 8 16-16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 4"/>
+          ) : (
+            <>
+              <rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4"/>
+              <path d="M18 20h12M18 26h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </>
+          )}
         </svg>
-        <p className="text-gray-500 dark:text-gray-400 font-medium">No saved test cases yet</p>
+        <p className="text-gray-500 dark:text-gray-400 font-medium">
+          {isImportedView ? 'No imported test cases yet' : 'No saved drafts yet'}
+        </p>
         <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-          Create a test case and click "Save" to store it locally
+          {isImportedView
+            ? 'Test cases will appear here after you import them to Xray'
+            : 'Create a test case and click "Save" to store it locally'
+          }
         </p>
       </div>
     );
@@ -172,26 +185,18 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
       {/* Header with search/sort */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Saved Test Cases</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            {isImportedView ? 'Imported Test Cases' : 'Draft Test Cases'}
+          </h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            Your locally saved test cases
-            {importedCount > 0 && !showImported && (
-              <span className="ml-1">({importedCount} imported hidden)</span>
-            )}
+            {isImportedView
+              ? 'Test cases that have been imported to Xray'
+              : 'Your locally saved test cases'
+            }
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Show imported toggle */}
-          {importedCount > 0 && (
-            <button
-              onClick={() => setShowImported(!showImported)}
-              className={`btn btn-sm ${showImported ? 'btn-secondary' : 'btn-ghost'}`}
-            >
-              {showImported ? 'Hide' : `+${importedCount}`}
-            </button>
-          )}
-
           {/* Search */}
           <div className="relative flex-1 sm:flex-none">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -216,13 +221,13 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="name">A-Z</option>
-            <option value="status">Complete</option>
+            {!isImportedView && <option value="status">Complete</option>}
           </select>
         </div>
       </div>
 
-      {/* Bulk actions */}
-      {selectedIds.size > 0 && (
+      {/* Bulk actions - only show on drafts view */}
+      {!isImportedView && selectedIds.size > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg mb-4 animate-slide-down">
           <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
             {selectedIds.size} selected
@@ -276,31 +281,31 @@ function SavedTestCases({ testCases, onEdit, onDelete, onImportSuccess, onImport
                     : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700'
                 }`}
             >
-              {/* Checkbox - only enabled for Ready TCs */}
-              <button
-                onClick={() => canSelect(tc) && toggleSelect(tc.id)}
-                disabled={!canSelect(tc)}
-                title={
-                  tc.status === 'imported'
-                    ? 'Already imported'
-                    : tc.isComplete
+              {/* Checkbox - only show on drafts view */}
+              {!isImportedView && (
+                <button
+                  onClick={() => canSelect(tc) && toggleSelect(tc.id)}
+                  disabled={!canSelect(tc)}
+                  title={
+                    tc.isComplete
                       ? 'Select for import'
                       : 'Complete all required fields to import'
-                }
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
-                  ${!canSelect(tc)
-                    ? 'border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-40'
-                    : selectedIds.has(tc.id)
-                      ? 'bg-primary-500 border-primary-500'
-                      : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 cursor-pointer'
-                  }`}
-              >
-                {selectedIds.has(tc.id) && canSelect(tc) && (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </button>
+                  }
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
+                    ${!canSelect(tc)
+                      ? 'border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-40'
+                      : selectedIds.has(tc.id)
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 cursor-pointer'
+                    }`}
+                >
+                  {selectedIds.has(tc.id) && canSelect(tc) && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              )}
 
               {/* Content */}
               <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import TestCaseForm from './TestCaseForm';
 import SavedTestCases from './SavedTestCases';
 import Modal from './Modal';
@@ -40,6 +40,15 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
   useEffect(() => {
     loadDrafts();
   }, [loadDrafts]);
+
+  // Calculate counts for tabs
+  const draftCount = useMemo(() => {
+    return savedTestCases.filter((tc) => tc.status !== 'imported').length;
+  }, [savedTestCases]);
+
+  const importedCount = useMemo(() => {
+    return savedTestCases.filter((tc) => tc.status === 'imported').length;
+  }, [savedTestCases]);
 
   // Check for localStorage migration on mount
   useEffect(() => {
@@ -230,10 +239,10 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="hidden sm:block">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          + Create New
+          <span className="hidden sm:inline">Create New</span>
         </button>
         <button
           onClick={() => handleTabChange('saved')}
@@ -243,14 +252,32 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
               : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="hidden sm:block">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M6 3v4h6V3" stroke="currentColor" strokeWidth="1.5"/>
           </svg>
-          Saved
-          {savedTestCases.length > 0 && (
+          <span className="hidden sm:inline">Drafts</span>
+          {draftCount > 0 && (
             <span className="px-2 py-0.5 text-xs bg-primary-500 text-white rounded-full">
-              {savedTestCases.length}
+              {draftCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => handleTabChange('imported')}
+          className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 text-sm font-medium transition-colors
+            ${activeTab === 'imported'
+              ? 'text-primary-600 border-b-2 border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M3 9l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span className="hidden sm:inline">Imported</span>
+          {importedCount > 0 && (
+            <span className="px-2 py-0.5 text-xs bg-emerald-500 text-white rounded-full">
+              {importedCount}
             </span>
           )}
         </button>
@@ -258,13 +285,13 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
 
       {/* Tab Content */}
       <div className="p-4 sm:p-6">
-        {loading && activeTab === 'saved' && (
+        {loading && (activeTab === 'saved' || activeTab === 'imported') && (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
           </div>
         )}
 
-        {error && activeTab === 'saved' && (
+        {error && (activeTab === 'saved' || activeTab === 'imported') && (
           <div className="text-center py-8">
             <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
             <button onClick={loadDrafts} className="btn btn-secondary">
@@ -290,6 +317,20 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
         {activeTab === 'saved' && !loading && !error && (
           <SavedTestCases
             testCases={savedTestCases}
+            filterStatus="draft"
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onImportSuccess={onImportSuccess}
+            onImportError={onImportError}
+            onRefresh={refreshDrafts}
+            showToast={showToast}
+          />
+        )}
+
+        {activeTab === 'imported' && !loading && !error && (
+          <SavedTestCases
+            testCases={savedTestCases}
+            filterStatus="imported"
             onEdit={handleEdit}
             onDelete={handleDelete}
             onImportSuccess={onImportSuccess}
