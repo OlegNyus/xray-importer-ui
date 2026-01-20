@@ -48,8 +48,25 @@ function determineStatus(draft, existingStatus) {
 }
 
 /**
- * GET /api/drafts
- * List all drafts
+ * @swagger
+ * /drafts:
+ *   get:
+ *     summary: List all drafts
+ *     tags: [Drafts]
+ *     responses:
+ *       200:
+ *         description: List of drafts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 drafts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Draft'
  */
 router.get('/', (req, res) => {
   try {
@@ -69,8 +86,31 @@ router.get('/', (req, res) => {
 });
 
 /**
- * GET /api/drafts/:id
- * Get single draft
+ * @swagger
+ * /drafts/{id}:
+ *   get:
+ *     summary: Get single draft
+ *     tags: [Drafts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Draft found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 draft:
+ *                   $ref: '#/components/schemas/Draft'
+ *       404:
+ *         description: Draft not found
  */
 router.get('/:id', (req, res) => {
   try {
@@ -94,8 +134,25 @@ router.get('/:id', (req, res) => {
 });
 
 /**
- * POST /api/drafts
- * Create new draft
+ * @swagger
+ * /drafts:
+ *   post:
+ *     summary: Create new draft
+ *     tags: [Drafts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               draft:
+ *                 $ref: '#/components/schemas/Draft'
+ *     responses:
+ *       200:
+ *         description: Draft created
+ *       400:
+ *         description: Draft data required
  */
 router.post('/', (req, res) => {
   try {
@@ -134,8 +191,31 @@ router.post('/', (req, res) => {
 });
 
 /**
- * PUT /api/drafts/:id
- * Update existing draft
+ * @swagger
+ * /drafts/{id}:
+ *   put:
+ *     summary: Update existing draft
+ *     tags: [Drafts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               draft:
+ *                 $ref: '#/components/schemas/Draft'
+ *     responses:
+ *       200:
+ *         description: Draft updated
+ *       404:
+ *         description: Draft not found
  */
 router.put('/:id', (req, res) => {
   try {
@@ -177,8 +257,22 @@ router.put('/:id', (req, res) => {
 });
 
 /**
- * DELETE /api/drafts/:id
- * Delete draft
+ * @swagger
+ * /drafts/{id}:
+ *   delete:
+ *     summary: Delete draft
+ *     tags: [Drafts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Draft deleted
+ *       404:
+ *         description: Draft not found
  */
 router.delete('/:id', (req, res) => {
   try {
@@ -197,8 +291,34 @@ router.delete('/:id', (req, res) => {
 });
 
 /**
- * PATCH /api/drafts/:id/status
- * Update draft status (for marking as imported)
+ * @swagger
+ * /drafts/{id}/status:
+ *   patch:
+ *     summary: Update draft status
+ *     tags: [Drafts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [draft, imported]
+ *     responses:
+ *       200:
+ *         description: Status updated
+ *       400:
+ *         description: Invalid status
+ *       404:
+ *         description: Draft not found
  */
 router.patch('/:id/status', (req, res) => {
   try {
@@ -237,8 +357,33 @@ router.patch('/:id/status', (req, res) => {
 });
 
 /**
- * POST /api/drafts/:id/import
- * Import single draft
+ * @swagger
+ * /drafts/{id}/import:
+ *   post:
+ *     summary: Import single draft to Xray
+ *     tags: [Import]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Import initiated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 jobId:
+ *                   type: string
+ *       400:
+ *         description: Config not found or already imported
+ *       404:
+ *         description: Draft not found
  */
 router.post('/:id/import', async (req, res) => {
   try {
@@ -309,8 +454,38 @@ router.post('/:id/import', async (req, res) => {
 });
 
 /**
- * POST /api/drafts/bulk-import
- * Import multiple drafts
+ * @swagger
+ * /drafts/bulk-import:
+ *   post:
+ *     summary: Import multiple drafts to Xray
+ *     tags: [Import]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Bulk import initiated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 jobId:
+ *                   type: string
+ *                 importedCount:
+ *                   type: integer
+ *       400:
+ *         description: No IDs provided or config not found
  */
 router.post('/bulk-import', async (req, res) => {
   try {
@@ -397,8 +572,27 @@ router.post('/bulk-import', async (req, res) => {
 });
 
 /**
- * POST /api/drafts/migrate
- * Migrate localStorage data to file system
+ * @swagger
+ * /drafts/migrate:
+ *   post:
+ *     summary: Migrate localStorage data to file system
+ *     tags: [Drafts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               testCases:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/Draft'
+ *     responses:
+ *       200:
+ *         description: Migration successful
+ *       400:
+ *         description: testCases must be an array
  */
 router.post('/migrate', (req, res) => {
   try {

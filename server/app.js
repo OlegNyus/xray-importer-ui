@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import configRoutes from './routes/config.js';
 import draftsRoutes from './routes/drafts.js';
 import settingsRoutes from './routes/settings.js';
+import { swaggerSpec } from './swagger.js';
 
 export function createApp() {
   const app = express();
@@ -13,6 +15,9 @@ export function createApp() {
     origin: isProduction ? false : true,
   }));
   app.use(express.json({ limit: '1mb' }));
+
+  // Swagger docs
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   // API Routes
   app.use('/api/config', configRoutes);

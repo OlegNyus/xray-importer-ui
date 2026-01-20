@@ -4,8 +4,26 @@ import { configExists, readConfig, writeConfig, CONFIG_PATH } from '../utils/fil
 const router = express.Router();
 
 /**
- * GET /api/config
- * Load existing configuration
+ * @swagger
+ * /config:
+ *   get:
+ *     summary: Get configuration
+ *     description: Returns masked API credentials and project settings
+ *     tags: [Config]
+ *     responses:
+ *       200:
+ *         description: Configuration found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *                 config:
+ *                   $ref: '#/components/schemas/Config'
+ *       404:
+ *         description: Config not found
  */
 router.get('/', (req, res) => {
   try {
@@ -43,8 +61,43 @@ router.get('/', (req, res) => {
 });
 
 /**
- * POST /api/config
- * Save configuration
+ * @swagger
+ * /config:
+ *   post:
+ *     summary: Save configuration
+ *     description: Save Xray API credentials and project settings
+ *     tags: [Config]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - xrayClientId
+ *               - xrayClientSecret
+ *               - jiraBaseUrl
+ *               - projectKey
+ *             properties:
+ *               xrayClientId:
+ *                 type: string
+ *               xrayClientSecret:
+ *                 type: string
+ *               jiraBaseUrl:
+ *                 type: string
+ *                 format: uri
+ *               projectKey:
+ *                 type: string
+ *                 pattern: '^[A-Z]+$'
+ *     responses:
+ *       200:
+ *         description: Config saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Validation error
  */
 router.post('/', (req, res) => {
   try {
