@@ -21,6 +21,11 @@ import { createDraft, updateDraft, importDraft } from '../utils/api';
 
 const emptyStep = { action: '', data: '', result: '' };
 
+const PRESET_COLORS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
+  '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6b7280',
+];
+
 function TestCaseForm({
   config,
   editingTestCase,
@@ -31,6 +36,8 @@ function TestCaseForm({
   onCreateNew,
   setHasUnsavedChanges,
   showToast,
+  collections = [],
+  onCreateCollection,
 }) {
   const [formData, setFormData] = useState({
     summary: '',
@@ -38,12 +45,20 @@ function TestCaseForm({
     testType: 'Manual',
     priority: '',
     labels: [],
+    collectionId: '',
     steps: [{ ...emptyStep, id: crypto.randomUUID() }],
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // New collection form state
+  const [showNewCollectionForm, setShowNewCollectionForm] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionColor, setNewCollectionColor] = useState(PRESET_COLORS[0]);
+  const [creatingCollection, setCreatingCollection] = useState(false);
 
   // Check if TC is imported (read-only)
   const isReadOnly = editingTestCase?.status === 'imported';
@@ -117,11 +132,13 @@ function TestCaseForm({
         testType: editingTestCase.testType || 'Manual',
         priority: editingTestCase.priority || '',
         labels: editingTestCase.labels || [],
+        collectionId: editingTestCase.collectionId || '',
         steps: editingTestCase.steps?.length > 0
           ? editingTestCase.steps.map((s) => ({ ...s, id: s.id || crypto.randomUUID() }))
           : [{ ...emptyStep, id: crypto.randomUUID() }],
       });
       setErrors({});
+      setHasChanges(false);
     } else {
       resetForm();
     }
@@ -134,16 +151,19 @@ function TestCaseForm({
       testType: 'Manual',
       priority: '',
       labels: [],
+      collectionId: '',
       steps: [{ ...emptyStep, id: crypto.randomUUID() }],
     });
     setErrors({});
     setHasUnsavedChanges(false);
+    setHasChanges(false);
   }
 
   function handleChange(e) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setHasUnsavedChanges(true);
+    setHasChanges(true);
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
@@ -152,6 +172,7 @@ function TestCaseForm({
   function handleLabelsChange(labels) {
     setFormData((prev) => ({ ...prev, labels }));
     setHasUnsavedChanges(true);
+    setHasChanges(true);
   }
 
   function handleStepChange(id, field, value) {
@@ -162,6 +183,7 @@ function TestCaseForm({
       ),
     }));
     setHasUnsavedChanges(true);
+    setHasChanges(true);
     // Clear step error when user types
     const stepIndex = formData.steps.findIndex((s) => s.id === id);
     const errorKey = `step_${stepIndex}_${field}`;
@@ -176,6 +198,7 @@ function TestCaseForm({
       steps: [...prev.steps, { ...emptyStep, id: crypto.randomUUID() }],
     }));
     setHasUnsavedChanges(true);
+    setHasChanges(true);
   }
 
   function removeStep(id) {
@@ -185,6 +208,7 @@ function TestCaseForm({
       steps: prev.steps.filter((step) => step.id !== id),
     }));
     setHasUnsavedChanges(true);
+    setHasChanges(true);
   }
 
   function handleDragEnd(event) {
@@ -200,6 +224,7 @@ function TestCaseForm({
         };
       });
       setHasUnsavedChanges(true);
+      setHasChanges(true);
     }
   }
 
@@ -234,6 +259,7 @@ function TestCaseForm({
       testType: 'Manual', // Fixed for now
       priority: 'Medium', // Fixed for now
       labels: formData.labels,
+      collectionId: formData.collectionId || null,
       steps: formData.steps.map(({ id, ...rest }) => rest), // Remove id for API
     };
   }
@@ -249,6 +275,8 @@ function TestCaseForm({
 
   function handleSaveDraft() {
     onSaveDraft(getTestCaseData());
+    setHasChanges(false);
+    setHasUnsavedChanges(false);
     setShowSavedModal(true);
   }
 
@@ -343,6 +371,7 @@ function TestCaseForm({
               if (isReadOnly) return;
               setFormData((prev) => ({ ...prev, summary }));
               setHasUnsavedChanges(true);
+              setHasChanges(true);
               if (errors.summary) {
                 setErrors((prev) => ({ ...prev, summary: null }));
               }
@@ -412,6 +441,113 @@ function TestCaseForm({
               placeholder="Type and press Enter to add labels"
               disabled={isReadOnly}
             />
+          </div>
+
+          {/* Collection selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Collection
+            </label>
+            {!showNewCollectionForm ? (
+              <div className="flex gap-2">
+                <select
+                  name="collectionId"
+                  value={formData.collectionId}
+                  onChange={handleChange}
+                  disabled={isReadOnly}
+                  className={`select flex-1 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <option value="">No collection</option>
+                  {collections.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.name}
+                    </option>
+                  ))}
+                </select>
+                {!isReadOnly && onCreateCollection && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCollectionForm(true)}
+                    className="btn btn-secondary btn-sm whitespace-nowrap"
+                  >
+                    + New
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newCollectionName}
+                    onChange={(e) => setNewCollectionName(e.target.value)}
+                    placeholder="Collection name..."
+                    className="input flex-1 text-sm"
+                    maxLength={30}
+                    autoFocus
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {PRESET_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewCollectionColor(color)}
+                      className={`w-5 h-5 rounded-full transition-all ${
+                        newCollectionColor === color
+                          ? 'ring-2 ring-offset-1 ring-primary-500 dark:ring-offset-gray-800 scale-110'
+                          : 'hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewCollectionForm(false);
+                      setNewCollectionName('');
+                      setNewCollectionColor(PRESET_COLORS[0]);
+                    }}
+                    className="btn btn-ghost btn-sm flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!newCollectionName.trim() || creatingCollection}
+                    onClick={async () => {
+                      const trimmedName = newCollectionName.trim();
+                      // Check for duplicate name
+                      const isDuplicate = collections.some(
+                        c => c.name.toLowerCase() === trimmedName.toLowerCase()
+                      );
+                      if (isDuplicate) {
+                        showToast('Collection with this name already exists');
+                        return;
+                      }
+                      setCreatingCollection(true);
+                      try {
+                        const newCollection = await onCreateCollection(trimmedName, newCollectionColor);
+                        setShowNewCollectionForm(false);
+                        setNewCollectionName('');
+                        setNewCollectionColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
+                        // Auto-select the newly created collection
+                        if (newCollection?.id) {
+                          setFormData(prev => ({ ...prev, collectionId: newCollection.id }));
+                        }
+                      } finally {
+                        setCreatingCollection(false);
+                      }
+                    }}
+                    className="btn btn-primary btn-sm flex-1"
+                  >
+                    {creatingCollection ? <span className="spinner"></span> : 'Create'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -485,14 +621,19 @@ function TestCaseForm({
             <button type="button" onClick={handleReset} className="btn btn-ghost order-3 sm:order-1">
               Reset
             </button>
-            <button type="button" onClick={handleSaveDraft} disabled={!hasFormData()} className="btn btn-secondary order-2">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={editingId ? !hasChanges : !hasFormData()}
+              className="btn btn-secondary order-2"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               {editingId ? 'Update Draft' : 'Save Draft'}
             </button>
-            <button type="submit" disabled={loading} className="btn btn-primary sm:flex-1 order-1 sm:order-3">
+            <button type="submit" disabled={loading || !currentIsComplete} className="btn btn-primary sm:flex-1 order-1 sm:order-3">
               {loading ? (
                 <>
                   <span className="spinner"></span>
@@ -539,13 +680,13 @@ function TestCaseForm({
       {showSavedModal && (
         <Modal onClose={() => setShowSavedModal(false)}>
           <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5L20 7" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
+                <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Draft Saved!
+              {editingId ? 'Draft Updated' : 'Draft Saved'}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               Your test case has been saved locally. What would you like to do next?

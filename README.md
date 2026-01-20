@@ -46,21 +46,22 @@ App: http://localhost:3001
 ## Creating Test Cases
 
 ### Summary Format
-Summary uses structured format: `Functional Area | UI/API | Title`
+Summary uses structured format: `Functional Area | Layer | Title`
 
 Example: `User Management | UI | Verify login with valid credentials`
 
 - **Functional Area** - Select from dropdown or add new
-- **Layer** - UI or API toggle
+- **Layer** - UI or API (always included in summary)
 - **Title** - Test case title
 
 ### Required for Import
-- **Summary** - All three parts (Area, Layer, Title)
+- **Summary** - Area, Layer, and Title
 - **Description** - Detailed description
 - **Test Steps** - At least one step with Action and Expected Result
 
 ### Optional
 - **Labels** - Select from predefined list or add new
+- **Collection** - Organize test cases into groups
 
 ### Fixed Values (for now)
 - **Test Type** - Manual
@@ -70,6 +71,16 @@ Example: `User Management | UI | Verify login with valid credentials`
 - Drag to reorder
 - Click + to add more
 - Each step: Action, Data (optional), Expected Result
+
+## Collections
+
+Organize test cases into collections (e.g., Sprint 1, Smoke Tests).
+
+- Create collections from Collections tab or inline in form
+- Drag test cases between collections
+- Each collection has a name and color
+- Cannot delete collections that contain test cases
+- Duplicate names not allowed (case-insensitive)
 
 ## Workflow
 
@@ -122,7 +133,7 @@ Config and settings stored in:
 ```
 config/
   xray-config.json   # Xray API credentials (gitignored)
-  settings.json      # Functional areas, labels
+  settings.json      # Functional areas, labels, collections
 ```
 
 ## File Structure
@@ -130,12 +141,12 @@ config/
 ```
 config/              # Config files
   xray-config.json   # API credentials (gitignored)
-  settings.json      # Functional areas, labels
+  settings.json      # Functional areas, labels, collections
 testCases/           # Test case JSON files (gitignored)
 server/              # Express backend
   routes/
     config.js        # Config endpoints
-    settings.js      # Functional areas, labels endpoints
+    settings.js      # Functional areas, labels, collections endpoints
     drafts.js        # Draft CRUD + import
   utils/
     fileOperations.js
@@ -153,6 +164,9 @@ src/                 # React frontend
 | PUT | /api/settings/functional-areas | Save functional areas |
 | GET | /api/settings/labels | Get labels |
 | PUT | /api/settings/labels | Save labels |
+| GET | /api/settings/collections | Get collections |
+| POST | /api/settings/collections | Create collection |
+| DELETE | /api/settings/collections/:id | Delete collection |
 | GET | /api/drafts | List all drafts |
 | GET | /api/drafts/:id | Get single draft |
 | POST | /api/drafts | Create draft |

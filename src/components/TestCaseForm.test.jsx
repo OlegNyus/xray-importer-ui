@@ -141,7 +141,7 @@ describe('TestCaseForm', () => {
     const saveButton = screen.getByRole('button', { name: /Save Draft/ });
     fireEvent.click(saveButton);
 
-    expect(screen.getByText('Draft Saved!')).toBeInTheDocument();
+    expect(screen.getByText('Draft Saved')).toBeInTheDocument();
   });
 
   it('should call onCreateNew when Create New is clicked in saved modal', () => {
@@ -168,18 +168,67 @@ describe('TestCaseForm', () => {
     fireEvent.click(saveButton);
     fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }));
 
-    expect(screen.queryByText('Draft Saved!')).not.toBeInTheDocument();
+    expect(screen.queryByText('Draft Saved')).not.toBeInTheDocument();
   });
 
-  it('should show validation error on import without required fields', async () => {
-    const showToast = vi.fn();
-    render(<TestCaseForm {...defaultProps} showToast={showToast} />);
+  it('should disable Import button when required fields are empty', () => {
+    render(<TestCaseForm {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Import to Xray'));
+    const importButton = screen.getByRole('button', { name: /Import to Xray/ });
+    expect(importButton).toBeDisabled();
+  });
 
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith('Please fill in all required fields');
+  it('should enable Import button when all required fields are filled', () => {
+    render(<TestCaseForm {...defaultProps} />);
+
+    const importButton = screen.getByRole('button', { name: /Import to Xray/ });
+    expect(importButton).toBeDisabled();
+
+    // Fill required fields
+    fireEvent.change(screen.getByTestId('summary-input'), { target: { value: 'Test Summary' } });
+    fireEvent.change(screen.getByPlaceholderText('Detailed description of the test case'), {
+      target: { value: 'Test Description', name: 'description' },
     });
+    fireEvent.change(screen.getByPlaceholderText('What action to perform'), {
+      target: { value: 'Test Action' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Expected outcome'), {
+      target: { value: 'Test Result' },
+    });
+
+    expect(importButton).not.toBeDisabled();
+  });
+
+  it('should disable Import button if step action is missing', () => {
+    render(<TestCaseForm {...defaultProps} />);
+
+    // Fill all except step action
+    fireEvent.change(screen.getByTestId('summary-input'), { target: { value: 'Test Summary' } });
+    fireEvent.change(screen.getByPlaceholderText('Detailed description of the test case'), {
+      target: { value: 'Test Description', name: 'description' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Expected outcome'), {
+      target: { value: 'Test Result' },
+    });
+
+    const importButton = screen.getByRole('button', { name: /Import to Xray/ });
+    expect(importButton).toBeDisabled();
+  });
+
+  it('should disable Import button if step result is missing', () => {
+    render(<TestCaseForm {...defaultProps} />);
+
+    // Fill all except step result
+    fireEvent.change(screen.getByTestId('summary-input'), { target: { value: 'Test Summary' } });
+    fireEvent.change(screen.getByPlaceholderText('Detailed description of the test case'), {
+      target: { value: 'Test Description', name: 'description' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('What action to perform'), {
+      target: { value: 'Test Action' },
+    });
+
+    const importButton = screen.getByRole('button', { name: /Import to Xray/ });
+    expect(importButton).toBeDisabled();
   });
 
   it('should import successfully with all fields', async () => {
@@ -362,5 +411,61 @@ describe('TestCaseForm', () => {
         error: 'Network error',
       });
     });
+  });
+
+  it('should disable Update Draft button when editing with no changes', () => {
+    render(
+      <TestCaseForm
+        {...defaultProps}
+        editingId="tc-1"
+        editingTestCase={{ summary: 'Test', description: 'Desc', steps: [{ action: 'A', result: 'R' }] }}
+      />
+    );
+
+    const updateButton = screen.getByRole('button', { name: /Update Draft/ });
+    expect(updateButton).toBeDisabled();
+  });
+
+  it('should enable Update Draft button when editing and changes are made', () => {
+    render(
+      <TestCaseForm
+        {...defaultProps}
+        editingId="tc-1"
+        editingTestCase={{ summary: 'Test', description: 'Desc', steps: [{ action: 'A', result: 'R' }] }}
+      />
+    );
+
+    const updateButton = screen.getByRole('button', { name: /Update Draft/ });
+    expect(updateButton).toBeDisabled();
+
+    // Make a change
+    fireEvent.change(screen.getByTestId('summary-input'), { target: { value: 'Updated Summary' } });
+
+    expect(updateButton).not.toBeDisabled();
+  });
+
+  it('should disable Update Draft button again after saving', () => {
+    render(
+      <TestCaseForm
+        {...defaultProps}
+        editingId="tc-1"
+        editingTestCase={{ summary: 'Test', description: 'Desc', steps: [{ action: 'A', result: 'R' }] }}
+      />
+    );
+
+    // Make a change
+    fireEvent.change(screen.getByTestId('summary-input'), { target: { value: 'Updated Summary' } });
+
+    const updateButton = screen.getByRole('button', { name: /Update Draft/ });
+    expect(updateButton).not.toBeDisabled();
+
+    // Save draft
+    fireEvent.click(updateButton);
+
+    // Close modal
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }));
+
+    // Button should be disabled again
+    expect(updateButton).toBeDisabled();
   });
 });
