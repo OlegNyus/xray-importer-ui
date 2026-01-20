@@ -8,9 +8,27 @@ function Header({ isConfigured, config, darkMode, onToggleDarkMode, onReconfigur
     <>
       <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M4 9L8 13L14 5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              {/* Droplet shape */}
+              <path
+                d="M12 21c-4 0-7-3-7-7 0-4 7-11 7-11s7 7 7 11c0 4-3 7-7 7z"
+                fill="white"
+                fillOpacity="0.9"
+              />
+              {/* X-ray beam lines */}
+              <path
+                d="M8 12h8M10 9h4M10 15h4"
+                stroke="url(#rayGradient)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="rayGradient" x1="8" y1="12" x2="16" y2="12">
+                  <stop stopColor="#6366f1"/>
+                  <stop offset="1" stopColor="#a855f7"/>
+                </linearGradient>
+              </defs>
             </svg>
           </div>
           <span className="font-semibold text-lg text-gray-900 dark:text-white">RayDrop</span>
