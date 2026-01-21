@@ -2,6 +2,8 @@
 
 Web UI for importing test cases to Xray Cloud.
 
+![Create Test Case](docs/screenshots/create-test-case.png)
+
 ## Requirements
 
 - Node.js 18+
@@ -39,9 +41,18 @@ App: http://localhost:3001
    - **Client ID** - Xray API Client ID
    - **Client Secret** - Xray API Client Secret
    - **Jira Base URL** - e.g., `https://yourcompany.atlassian.net/`
-   - **Project Key** - Jira project key (uppercase, e.g., `PROJ`)
 
 3. Click "Validate & Save Configuration"
+
+## Projects
+
+Manage multiple Jira projects from Settings → Projects.
+
+- **Add Project** - Enter project key (e.g., `WCP`)
+- **Switch Project** - Click project card to make it active
+- **Hide/Show** - Hide projects you don't need, unhide later
+- Each project has its own functional areas, labels, and collections
+- Test cases are filtered by active project
 
 ## Creating Test Cases
 
@@ -51,119 +62,122 @@ Summary uses structured format: `Functional Area | Layer | Title`
 Example: `User Management | UI | Verify login with valid credentials`
 
 - **Functional Area** - Select from dropdown or add new
-- **Layer** - UI or API (always included in summary)
+- **Layer** - UI or API
 - **Title** - Test case title
 
-### Required for Import
+### Required Fields
 - **Summary** - Area, Layer, and Title
 - **Description** - Detailed description
 - **Test Steps** - At least one step with Action and Expected Result
+- **Xray Linking** - At least one Test Plan, Test Execution, and Test Set
 
 ### Optional
 - **Labels** - Select from predefined list or add new
 - **Collection** - Organize test cases into groups
+- **Preconditions** - Link existing preconditions from Xray
+- **Folder** - Place test in specific Xray folder
 
-### Fixed Values (for now)
-- **Test Type** - Manual
-- **Priority** - Medium
-
-### Steps
+### Test Steps
 - Drag to reorder
 - Click + to add more
 - Each step: Action, Data (optional), Expected Result
+
+## Xray Linking
+
+Link test cases to Xray entities before import:
+
+| Entity | Required | Description |
+|--------|----------|-------------|
+| Test Plans | Yes | One or more test plans |
+| Test Executions | Yes | One or more test executions |
+| Test Sets | Yes | One or more test sets |
+| Folder | Yes | Folder path (default: root `/`) |
+| Preconditions | No | Link existing preconditions |
+
+Click "Refresh" to load available entities from Xray Cloud.
 
 ## Collections
 
 Organize test cases into collections (e.g., Sprint 1, Smoke Tests).
 
 - Create collections from Collections tab or inline in form
-- Drag test cases between collections
 - Each collection has a name and color
 - Cannot delete collections that contain test cases
-- Duplicate names not allowed (case-insensitive)
 
 ## Workflow
 
 ### Save Draft
 - Save incomplete test cases for later
-- Requires at least one field to have content
 - Stored as individual JSON files in `/testCases/`
 
 ### Import
-1. Fill required fields
+1. Fill required fields including Xray linking
 2. Click "Import to Xray"
-3. Test case is saved and imported directly via Xray API
+3. Test case created in Jira and linked to selected entities
 4. Post-import modal: choose to delete or keep locally
 
 ### Bulk Import
 1. Save multiple test cases as drafts
-2. Go to "Saved" tab
+2. Go to "Drafts" tab
 3. Select complete drafts (Draft ✓)
 4. Click "Import Selected"
 5. Post-import modal: delete all or keep as "imported"
 
 ## Test Case Status
 
-Only two statuses: `draft` and `imported`
-
 | Badge | Meaning | Can Import |
 |-------|---------|------------|
 | New | Not saved yet | No |
 | Draft | Saved, incomplete | No |
 | Draft ✓ | Saved, complete | Yes |
-| Imported | In Xray | No (read-only) |
+| Imported | In Xray | No |
 
-- **Save Draft** → always `status: 'draft'`
-- **Completeness** (`isComplete`) computed from required fields
-- **Draft ✓** indicates complete and ready to import
-- **Import** → sets `status: 'imported'` (read-only)
+## Imported Test Cases
+
+Imported test cases appear in the "Imported" tab.
+
+- **View** - Click to see preview with all details
+- **Jira Link** - Click test key badge (e.g., WCP-9172) to open in Jira
+- **Edit Links** - Add/remove Test Plans, Executions, Sets, Preconditions
+- **Select** - Checkbox to select individual or all
+- **Delete** - Remove selected from local storage (does not delete from Jira)
+
+### Edit Xray Links
+
+For imported test cases, you can modify Xray associations:
+
+1. Click on imported test case to view
+2. Click "Edit Links" button
+3. Select/deselect Test Plans, Executions, Sets, Preconditions
+4. Click "Save Changes"
+
+Changes are synced to Xray Cloud. The test case is not duplicated.
 
 ## Storage
 
-Each test case is stored as a separate JSON file:
-
+Test cases stored as separate JSON files:
 ```
 testCases/
   {uuid-1}.json
   {uuid-2}.json
-  ...
 ```
 
-Config and settings stored in:
+Config and settings:
 ```
 config/
-  xray-config.json   # Xray API credentials (gitignored)
-  settings.json      # Functional areas, labels, collections
-```
-
-## File Structure
-
-```
-config/              # Config files
   xray-config.json   # API credentials (gitignored)
-  settings.json      # Functional areas, labels, collections
-testCases/           # Test case JSON files (gitignored)
-server/              # Express backend
-  routes/
-    config.js        # Config endpoints
-    settings.js      # Functional areas, labels, collections endpoints
-    drafts.js        # Draft CRUD + import
-  utils/
-    fileOperations.js
-    xrayClient.js    # Direct Xray API calls
-src/                 # React frontend
+  settings.json      # Projects, functional areas, labels, collections
 ```
-
-## API Documentation
-
-Interactive API docs available at `/api-docs` when server is running.
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | /api/config | Get config (masked credentials) |
+| GET | /api/config | Get config |
 | POST | /api/config | Save config |
+| GET | /api/settings/projects | Get all projects |
+| POST | /api/settings/projects | Add project |
+| POST | /api/settings/projects/:key/activate | Set active project |
 | GET | /api/settings/functional-areas | Get functional areas |
 | PUT | /api/settings/functional-areas | Save functional areas |
 | GET | /api/settings/labels | Get labels |
@@ -177,24 +191,25 @@ Interactive API docs available at `/api-docs` when server is running.
 | PUT | /api/drafts/:id | Update draft |
 | DELETE | /api/drafts/:id | Delete draft |
 | PATCH | /api/drafts/:id/status | Update status |
+| PATCH | /api/drafts/:id/xray-links | Update Xray links |
 | POST | /api/drafts/:id/import | Import single draft |
 | POST | /api/drafts/bulk-import | Import multiple drafts |
+| GET | /api/xray/test-plans/:projectKey | Get test plans |
+| GET | /api/xray/test-executions/:projectKey | Get test executions |
+| GET | /api/xray/test-sets/:projectKey | Get test sets |
+| GET | /api/xray/preconditions/:projectKey | Get preconditions |
+| GET | /api/xray/folders/:projectKey | Get folder structure |
+| POST | /api/xray/link | Link test to entities |
+| POST | /api/xray/update-links | Update links (add/remove) |
+
+Interactive API docs: `/api-docs`
 
 ## Testing
 
 ```bash
 npm test              # Run tests
-npm run test:coverage # Run tests with coverage report
+npm run test:coverage # Coverage report
 ```
-
-## Production
-
-```bash
-npm run build    # Build frontend
-npm start        # Run server on port 3001
-```
-
-Single server serves both API and static files.
 
 ## Troubleshooting
 
@@ -203,10 +218,9 @@ Single server serves both API and static files.
 - Check API key has not expired
 
 **Import failed**
-- Check required fields are filled
+- Check all required fields including Xray linking
 - Verify project key exists in Jira
 
-**Test cases not in Jira**
-- Import is async
-- Check Xray Import Jobs for status
-- Job ID shown on success screen
+**Xray entities not loading**
+- Click "Refresh" button in Xray Linking section
+- Check Xray API credentials are valid
