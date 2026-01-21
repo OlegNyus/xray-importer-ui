@@ -4,6 +4,7 @@ import swaggerUi from 'swagger-ui-express';
 import configRoutes from './routes/config.js';
 import draftsRoutes from './routes/drafts.js';
 import settingsRoutes from './routes/settings.js';
+import xrayRoutes from './routes/xray.js';
 import { swaggerSpec } from './swagger.js';
 
 export function createApp() {
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/api/config', configRoutes);
   app.use('/api/drafts', draftsRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/xray', xrayRoutes);
 
   // Health check
   app.get('/api/health', (req, res) => {

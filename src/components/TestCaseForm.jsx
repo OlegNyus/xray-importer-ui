@@ -17,7 +17,10 @@ import SortableStepCard from './SortableStepCard';
 import TagInput from './TagInput';
 import SummaryInput from './SummaryInput';
 import Modal from './Modal';
-import { createDraft, updateDraft, importDraft } from '../utils/api';
+import XrayLinkingPanel from './XrayLinkingPanel';
+import StepProgressBar, { getCompletedSteps } from './StepProgressBar';
+import TestCasePreview from './TestCasePreview';
+import { createDraft, updateDraft, importDraft, linkTestToEntities } from '../utils/api';
 
 const emptyStep = { action: '', data: '', result: '' };
 
@@ -28,6 +31,7 @@ const PRESET_COLORS = [
 
 function TestCaseForm({
   config,
+  activeProject,
   editingTestCase,
   editingId,
   onSaveDraft,
@@ -38,6 +42,9 @@ function TestCaseForm({
   showToast,
   collections = [],
   onCreateCollection,
+  xrayEntitiesCache = null,
+  onLoadXrayEntities = null,
+  onRefresh = null,
 }) {
   const [formData, setFormData] = useState({
     summary: '',
@@ -48,11 +55,25 @@ function TestCaseForm({
     collectionId: '',
     steps: [{ ...emptyStep, id: crypto.randomUUID() }],
   });
+  const [xrayLinking, setXrayLinking] = useState({
+    testPlanIds: [],
+    testPlanDisplays: [],
+    testExecutionIds: [],
+    testExecutionDisplays: [],
+    testSetIds: [],
+    testSetDisplays: [],
+    folderPath: '/',
+    projectId: null,
+    preconditionIds: [],
+    preconditionDisplays: [],
+  });
+  const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showXrayValidation, setShowXrayValidation] = useState(false);
 
   // New collection form state
   const [showNewCollectionForm, setShowNewCollectionForm] = useState(false);
@@ -63,32 +84,115 @@ function TestCaseForm({
   // Check if TC is imported (read-only)
   const isReadOnly = editingTestCase?.status === 'imported';
 
-  // Compute current completeness for status display
-  function checkComplete() {
-    const hasRequiredFields =
-      formData.summary?.trim() &&
-      formData.description?.trim() &&
-      formData.steps?.length > 0;
+  // Render preview layout for imported test cases
+  if (isReadOnly && editingTestCase) {
+    return (
+      <TestCasePreview
+        testCase={editingTestCase}
+        config={config}
+        activeProject={activeProject}
+        xrayEntitiesCache={xrayEntitiesCache}
+        onLoadXrayEntities={onLoadXrayEntities}
+        onLinksUpdated={onRefresh}
+        showToast={showToast}
+      />
+    );
+  }
 
-    if (!hasRequiredFields) return false;
+  // Migrate old single-select state to new multi-select arrays
+  function migrateXrayLinking(linking) {
+    if (!linking) return getEmptyXrayLinking();
 
+    const migrated = { ...linking };
+
+    // Migrate testPlanId -> testPlanIds
+    if (linking.testPlanId && !linking.testPlanIds?.length) {
+      migrated.testPlanIds = [linking.testPlanId];
+      migrated.testPlanDisplays = linking.testPlanDisplay
+        ? [{ id: linking.testPlanId, display: linking.testPlanDisplay }]
+        : [];
+    }
+    if (!migrated.testPlanIds) migrated.testPlanIds = [];
+    if (!migrated.testPlanDisplays) migrated.testPlanDisplays = [];
+
+    // Migrate testExecutionId -> testExecutionIds
+    if (linking.testExecutionId && !linking.testExecutionIds?.length) {
+      migrated.testExecutionIds = [linking.testExecutionId];
+      migrated.testExecutionDisplays = linking.testExecutionDisplay
+        ? [{ id: linking.testExecutionId, display: linking.testExecutionDisplay }]
+        : [];
+    }
+    if (!migrated.testExecutionIds) migrated.testExecutionIds = [];
+    if (!migrated.testExecutionDisplays) migrated.testExecutionDisplays = [];
+
+    // Migrate testSetId -> testSetIds
+    if (linking.testSetId && !linking.testSetIds?.length) {
+      migrated.testSetIds = [linking.testSetId];
+      migrated.testSetDisplays = linking.testSetDisplay
+        ? [{ id: linking.testSetId, display: linking.testSetDisplay }]
+        : [];
+    }
+    if (!migrated.testSetIds) migrated.testSetIds = [];
+    if (!migrated.testSetDisplays) migrated.testSetDisplays = [];
+
+    // Ensure other arrays exist
+    if (!migrated.preconditionIds) migrated.preconditionIds = [];
+    if (!migrated.preconditionDisplays) migrated.preconditionDisplays = [];
+    if (!migrated.folderPath) migrated.folderPath = '/';
+
+    return migrated;
+  }
+
+  function getEmptyXrayLinking() {
+    return {
+      testPlanIds: [],
+      testPlanDisplays: [],
+      testExecutionIds: [],
+      testExecutionDisplays: [],
+      testSetIds: [],
+      testSetDisplays: [],
+      folderPath: '/',
+      projectId: null,
+      preconditionIds: [],
+      preconditionDisplays: [],
+    };
+  }
+
+  // Check if Step 1 (Details) is valid
+  function isStep1Valid() {
+    return formData.summary?.trim() && formData.description?.trim();
+  }
+
+  // Check if Step 2 (Test Steps) is valid
+  function isStep2Valid() {
+    if (!formData.steps?.length) return false;
     return formData.steps.every(
       (step) => step.action?.trim() && step.result?.trim()
     );
   }
 
+  // Check if Step 3 (Xray Links) is valid
+  function isStep3Valid() {
+    return (
+      xrayLinking.testPlanIds?.length > 0 &&
+      xrayLinking.testExecutionIds?.length > 0 &&
+      xrayLinking.testSetIds?.length > 0 &&
+      xrayLinking.folderPath?.trim()
+    );
+  }
+
+  // Compute current completeness for status display
+  function checkComplete() {
+    return isStep1Valid() && isStep2Valid() && isStep3Valid();
+  }
+
   const currentIsComplete = checkComplete();
+
+  // Check if project matches (for import validation)
+  const projectMismatch = editingTestCase?.projectKey && editingTestCase.projectKey !== activeProject;
 
   // Get current status badge
   function getStatusBadge() {
-    // Imported - read-only
-    if (isReadOnly) {
-      return (
-        <span className="text-xs font-normal px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded flex items-center gap-1">
-          Imported
-        </span>
-      );
-    }
     // New - not saved yet
     if (!editingId) {
       return (
@@ -123,26 +227,50 @@ function TestCaseForm({
     })
   );
 
+  // Track which test case ID we last loaded to avoid resetting on save
+  const [loadedTestCaseId, setLoadedTestCaseId] = useState(null);
+  // Track if we just saved a new draft (to prevent form reset on first save)
+  const [justSavedNewDraft, setJustSavedNewDraft] = useState(false);
+
   // Load editing test case
   useEffect(() => {
     if (editingTestCase) {
-      setFormData({
-        summary: editingTestCase.summary || '',
-        description: editingTestCase.description || '',
-        testType: editingTestCase.testType || 'Manual',
-        priority: editingTestCase.priority || '',
-        labels: editingTestCase.labels || [],
-        collectionId: editingTestCase.collectionId || '',
-        steps: editingTestCase.steps?.length > 0
-          ? editingTestCase.steps.map((s) => ({ ...s, id: s.id || crypto.randomUUID() }))
-          : [{ ...emptyStep, id: crypto.randomUUID() }],
-      });
-      setErrors({});
-      setHasChanges(false);
+      // Only reset form data if loading a different test case
+      const isDifferentTestCase = editingTestCase.id !== loadedTestCaseId;
+
+      if (isDifferentTestCase) {
+        // When a new draft is saved for the first time, don't reset form
+        // The form already has the correct data since user just entered it
+        if (justSavedNewDraft && loadedTestCaseId === null) {
+          // Just mark this test case as loaded, preserve current form state and step
+          setLoadedTestCaseId(editingTestCase.id);
+          setJustSavedNewDraft(false);
+        } else {
+          // Loading a different test case - load its data
+          setFormData({
+            summary: editingTestCase.summary || '',
+            description: editingTestCase.description || '',
+            testType: editingTestCase.testType || 'Manual',
+            priority: editingTestCase.priority || '',
+            labels: editingTestCase.labels || [],
+            collectionId: editingTestCase.collectionId || '',
+            steps: editingTestCase.steps?.length > 0
+              ? editingTestCase.steps.map((s) => ({ ...s, id: s.id || crypto.randomUUID() }))
+              : [{ ...emptyStep, id: crypto.randomUUID() }],
+          });
+          // Load saved Xray linking data with migration
+          setXrayLinking(migrateXrayLinking(editingTestCase.xrayLinking));
+          setErrors({});
+          setHasChanges(false);
+          setCurrentStep(1);
+          setLoadedTestCaseId(editingTestCase.id);
+        }
+      }
     } else {
       resetForm();
+      setLoadedTestCaseId(null);
     }
-  }, [editingTestCase]);
+  }, [editingTestCase, loadedTestCaseId, justSavedNewDraft]);
 
   function resetForm() {
     setFormData({
@@ -154,9 +282,13 @@ function TestCaseForm({
       collectionId: '',
       steps: [{ ...emptyStep, id: crypto.randomUUID() }],
     });
+    setXrayLinking(getEmptyXrayLinking());
     setErrors({});
     setHasUnsavedChanges(false);
     setHasChanges(false);
+    setShowXrayValidation(false);
+    setCurrentStep(1);
+    setJustSavedNewDraft(false);
   }
 
   function handleChange(e) {
@@ -248,7 +380,19 @@ function TestCaseForm({
       }
     });
 
+    // Validate Xray linking fields (required for import)
+    const xrayValid =
+      xrayLinking.testPlanIds?.length > 0 &&
+      xrayLinking.testExecutionIds?.length > 0 &&
+      xrayLinking.testSetIds?.length > 0 &&
+      xrayLinking.folderPath?.trim();
+
+    if (!xrayValid) {
+      newErrors.xrayLinking = 'All Xray linking fields are required';
+    }
+
     setErrors(newErrors);
+    setShowXrayValidation(true);
     return Object.keys(newErrors).length === 0;
   }
 
@@ -261,6 +405,7 @@ function TestCaseForm({
       labels: formData.labels,
       collectionId: formData.collectionId || null,
       steps: formData.steps.map(({ id, ...rest }) => rest), // Remove id for API
+      xrayLinking: xrayLinking, // Persist Xray linking selections
     };
   }
 
@@ -274,6 +419,10 @@ function TestCaseForm({
   }
 
   function handleSaveDraft() {
+    // If this is a new draft (no editingId yet), mark it so we don't reset form on save
+    if (!editingId) {
+      setJustSavedNewDraft(true);
+    }
     onSaveDraft(getTestCaseData());
     setHasChanges(false);
     setHasUnsavedChanges(false);
@@ -282,6 +431,12 @@ function TestCaseForm({
 
   async function handleImport(e) {
     e.preventDefault();
+
+    // Validate project match - user can only import to active project
+    if (editingTestCase?.projectKey && editingTestCase.projectKey !== activeProject) {
+      showToast(`Cannot import: This draft belongs to ${editingTestCase.projectKey}. Switch to that project to import.`);
+      return;
+    }
 
     if (!validateForImport()) {
       showToast('Please fill in all required fields');
@@ -315,6 +470,29 @@ function TestCaseForm({
       const result = await importDraft(draftId);
 
       if (result.success) {
+        // Link to Xray entities if we have testIssueId
+        if (result.testIssueId) {
+          try {
+            const linkResult = await linkTestToEntities({
+              testIssueId: result.testIssueId,
+              testPlanIds: xrayLinking.testPlanIds,
+              testExecutionIds: xrayLinking.testExecutionIds,
+              testSetIds: xrayLinking.testSetIds,
+              projectId: xrayLinking.projectId,
+              projectKey: activeProject,
+              folderPath: xrayLinking.folderPath,
+              preconditionIds: xrayLinking.preconditionIds,
+            });
+
+            if (linkResult.warnings?.length) {
+              showToast(`Linked with warnings: ${linkResult.warnings.join(', ')}`);
+            }
+          } catch (linkError) {
+            // Don't fail the whole import if linking fails
+            showToast(`Import succeeded but linking failed: ${linkError.message}`);
+          }
+        }
+
         setHasUnsavedChanges(false);
         onImportSuccess({ ...result, draftId });
       } else {
@@ -344,31 +522,107 @@ function TestCaseForm({
     showToast('Form reset');
   }
 
+  function handleNextStep() {
+    if (currentStep === 1) {
+      if (isStep1Valid()) {
+        setCurrentStep(2);
+      } else {
+        setErrors({
+          summary: !formData.summary?.trim() ? 'Summary is required' : null,
+          description: !formData.description?.trim() ? 'Description is required' : null,
+        });
+        showToast('Please fill in Summary and Description');
+      }
+    } else if (currentStep === 2) {
+      if (isStep2Valid()) {
+        setCurrentStep(3);
+      } else {
+        // Validate steps and show errors
+        const newErrors = {};
+        formData.steps.forEach((step, index) => {
+          if (!step.action?.trim()) {
+            newErrors[`step_${index}_action`] = 'Action is required';
+          }
+          if (!step.result?.trim()) {
+            newErrors[`step_${index}_result`] = 'Expected Result is required';
+          }
+        });
+        setErrors(newErrors);
+        showToast('Please complete all test steps');
+      }
+    }
+  }
+
+  function handlePrevStep() {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  }
+
   return (
     <>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          {isReadOnly ? 'View Test Case' : editingId ? 'Edit Test Case' : 'Create Test Case'}
+          {editingId ? 'Edit Test Case' : 'Create Test Case'}
           {getStatusBadge()}
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {isReadOnly
-            ? 'This test case has been imported to Xray and is read-only'
-            : editingId
-              ? 'Modify the test case and save or import'
-              : 'Fill in the details below and import to Xray Cloud'}
+          {editingId
+            ? 'Modify the test case and save or import'
+            : 'Fill in the details below and import to Xray Cloud'}
         </p>
+        {/* Project indicator */}
+        {activeProject && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Importing to:</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 3h8v6a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M2 3l2-2h4l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              </svg>
+              {activeProject}
+            </span>
+          </div>
+        )}
+        {/* Warning if draft is from different project */}
+        {editingTestCase?.projectKey && editingTestCase.projectKey !== activeProject && (
+          <div className="mt-2 flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 5v3M7 10v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M6.13 2.44L1.09 10.5a1 1 0 00.87 1.5h10.08a1 1 0 00.87-1.5L7.87 2.44a1 1 0 00-1.74 0z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
+            <span>
+              This draft was created for <strong>{editingTestCase.projectKey}</strong>.
+              It will be imported to <strong>{activeProject}</strong>.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Step Progress Bar */}
+      <div className="mb-6">
+        <StepProgressBar
+          currentStep={currentStep}
+          completedSteps={getCompletedSteps(getTestCaseData())}
+          status={editingTestCase?.status || 'draft'}
+          onClick={(step) => {
+            // Allow clicking on completed steps to navigate back
+            if (step < currentStep) {
+              setCurrentStep(step);
+            }
+          }}
+        />
       </div>
 
       <form onSubmit={handleImport} className="space-y-6">
-        {/* Test Case Details */}
+        {/* Step 1: Test Case Details */}
+        {currentStep === 1 && (
         <div className="space-y-4">
           <h3 className="font-medium text-gray-900 dark:text-white">Test Case Details</h3>
 
           <SummaryInput
             value={formData.summary}
             onChange={(summary) => {
-              if (isReadOnly) return;
               setFormData((prev) => ({ ...prev, summary }));
               setHasUnsavedChanges(true);
               setHasChanges(true);
@@ -378,12 +632,11 @@ function TestCaseForm({
             }}
             error={errors.summary}
             editingId={editingId}
-            disabled={isReadOnly}
           />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description {!isReadOnly && <span className="text-red-500">*</span>}
+              Description <span className="text-red-500">*</span>
             </label>
             <textarea
               name="description"
@@ -391,8 +644,7 @@ function TestCaseForm({
               onChange={handleChange}
               rows={3}
               placeholder="Detailed description of the test case"
-              disabled={isReadOnly}
-              className={`input ${errors.description ? 'input-error' : ''} ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`input ${errors.description ? 'input-error' : ''}`}
             />
             {errors.description && (
               <p className="text-red-500 text-sm mt-1">{errors.description}</p>
@@ -439,7 +691,6 @@ function TestCaseForm({
               tags={formData.labels}
               onChange={handleLabelsChange}
               placeholder="Type and press Enter to add labels"
-              disabled={isReadOnly}
             />
           </div>
 
@@ -454,8 +705,7 @@ function TestCaseForm({
                   name="collectionId"
                   value={formData.collectionId}
                   onChange={handleChange}
-                  disabled={isReadOnly}
-                  className={`select flex-1 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className="select flex-1"
                 >
                   <option value="">No collection</option>
                   {collections.map((col) => (
@@ -464,7 +714,7 @@ function TestCaseForm({
                     </option>
                   ))}
                 </select>
-                {!isReadOnly && onCreateCollection && (
+                {onCreateCollection && (
                   <button
                     type="button"
                     onClick={() => setShowNewCollectionForm(true)}
@@ -549,20 +799,53 @@ function TestCaseForm({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Steps */}
+        {/* Step 1 Actions */}
+        {currentStep === 1 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button type="button" onClick={handleReset} className="btn btn-ghost order-3 sm:order-1">
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={editingId ? !hasChanges : !hasFormData()}
+              className="btn btn-secondary order-2"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              {editingId ? 'Update Draft' : 'Save Draft'}
+            </button>
+            <button
+              type="button"
+              onClick={handleNextStep}
+              disabled={!isStep1Valid()}
+              className="btn btn-primary sm:flex-1 order-1 sm:order-3"
+            >
+              Next: Test Steps
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        </div>
+        )}
+
+        {/* Step 2: Test Steps */}
+        {currentStep === 2 && (
+        <>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-gray-900 dark:text-white">Test Steps</h3>
-            {!isReadOnly && (
-              <button type="button" onClick={addStep} className="btn btn-secondary btn-sm">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                Add Step
-              </button>
-            )}
+            <button type="button" onClick={addStep} className="btn btn-secondary btn-sm">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Add Step
+            </button>
           </div>
 
           <DndContext
@@ -584,7 +867,6 @@ function TestCaseForm({
                     canRemove={formData.steps.length > 1}
                     onChange={handleStepChange}
                     onRemove={removeStep}
-                    disabled={isReadOnly}
                   />
                 ))}
               </div>
@@ -592,34 +874,14 @@ function TestCaseForm({
           </DndContext>
         </div>
 
-        {/* Form Hint */}
-        {!isReadOnly && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <span>
-              <strong>Save Draft</strong> — no validation &nbsp;|&nbsp; <strong>Import</strong> — requires all fields
-            </span>
-          </div>
-        )}
-
-        {/* Actions */}
-        {isReadOnly ? (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>
-              This test case has been imported to Xray and cannot be modified.
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <button type="button" onClick={handleReset} className="btn btn-ghost order-3 sm:order-1">
-              Reset
+        {/* Step 2 Actions */}
+        {currentStep === 2 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button type="button" onClick={handlePrevStep} className="btn btn-ghost order-3 sm:order-1">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Back
             </button>
             <button
               type="button"
@@ -633,18 +895,86 @@ function TestCaseForm({
               </svg>
               {editingId ? 'Update Draft' : 'Save Draft'}
             </button>
-            <button type="submit" disabled={loading || !currentIsComplete} className="btn btn-primary sm:flex-1 order-1 sm:order-3">
-              {loading ? (
-                <>
-                  <span className="spinner"></span>
-                  Importing...
-                </>
-              ) : (
-                <>
-                  Import to Xray
-                </>
-              )}
+            <button
+              type="button"
+              onClick={handleNextStep}
+              disabled={!isStep2Valid()}
+              className="btn btn-primary sm:flex-1 order-1 sm:order-3"
+            >
+              Next: Xray Links
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
+          </div>
+        )}
+        </>
+        )}
+
+        {/* Step 3: Xray Links */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            {activeProject && (
+              <XrayLinkingPanel
+                projectKey={activeProject}
+                value={xrayLinking}
+                onChange={(newLinking) => {
+                  setXrayLinking(newLinking);
+                  setHasUnsavedChanges(true);
+                  setHasChanges(true);
+                }}
+                showValidation={showXrayValidation}
+                xrayEntitiesCache={xrayEntitiesCache}
+                onLoadXrayEntities={onLoadXrayEntities}
+              />
+            )}
+
+            {/* Step 3 Hint */}
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span>
+                Select Test Plans, Executions, and Sets to link your test case to after import
+              </span>
+            </div>
+
+            {/* Step 3 Actions */}
+            {currentStep === 3 && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={handlePrevStep} className="btn btn-ghost order-3 sm:order-1">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={editingId ? !hasChanges : !hasFormData()}
+                  className="btn btn-secondary order-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 4a1 1 0 011-1h7l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M5 3v3h5V3M5 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  {editingId ? 'Update Draft' : 'Save Draft'}
+                </button>
+                <button type="submit" disabled={loading || !currentIsComplete || projectMismatch} className="btn btn-primary sm:flex-1 order-1 sm:order-3">
+                  {loading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      Import to Xray
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </form>

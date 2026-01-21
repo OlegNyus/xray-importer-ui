@@ -8,7 +8,7 @@ import {
   writeDraft,
   deleteDraft,
 } from '../utils/fileOperations.js';
-import { importToXray } from '../utils/xrayClient.js';
+import { importToXrayAndWait } from '../utils/xrayClient.js';
 
 const router = express.Router();
 
@@ -394,6 +394,71 @@ router.patch('/:id/status', (req, res) => {
 
 /**
  * @swagger
+ * /drafts/{id}/xray-links:
+ *   patch:
+ *     summary: Update draft xrayLinking data
+ *     tags: [Drafts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               xrayLinking:
+ *                 type: object
+ *                 description: Updated xrayLinking data
+ *     responses:
+ *       200:
+ *         description: xrayLinking updated
+ *       400:
+ *         description: xrayLinking data required
+ *       404:
+ *         description: Draft not found
+ */
+router.patch('/:id/xray-links', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { xrayLinking } = req.body;
+
+    if (!xrayLinking) {
+      return res.status(400).json({ success: false, error: 'xrayLinking data required' });
+    }
+
+    const draft = readDraft(id);
+    if (!draft) {
+      return res.status(404).json({ success: false, error: 'Draft not found' });
+    }
+
+    const updatedDraft = {
+      ...draft,
+      xrayLinking,
+      updatedAt: Date.now(),
+    };
+
+    writeDraft(id, updatedDraft);
+
+    res.json({
+      success: true,
+      draft: updatedDraft,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update xrayLinking',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * @swagger
  * /drafts/{id}/import:
  *   post:
  *     summary: Import single draft to Xray
@@ -453,14 +518,15 @@ router.post('/:id/import', async (req, res) => {
       });
     }
 
-    // Import directly to Xray (no temp file needed)
-    const result = await importToXray([{
+    // Import directly to Xray and wait for completion
+    const result = await importToXrayAndWait([{
       summary: draft.summary,
       description: draft.description || '',
       testType: draft.testType,
       labels: draft.labels || [],
       steps: draft.steps || [],
-    }]);
+      projectKey: draft.projectKey,
+    }], draft.projectKey);
 
     // Mark as imported immediately on success
     if (result.success) {
@@ -469,6 +535,8 @@ router.post('/:id/import', async (req, res) => {
         status: 'imported',
         importedAt: Date.now(),
         updatedAt: Date.now(),
+        testIssueId: result.testIssueIds?.[0],
+        testKey: result.testKeys?.[0],
       };
       writeDraft(draft.id, updatedDraft);
     }
@@ -476,7 +544,9 @@ router.post('/:id/import', async (req, res) => {
     res.json({
       success: result.success,
       jobId: result.jobId,
-      message: result.message || result.error || 'Import failed',
+      testIssueId: result.testIssueIds?.[0],
+      testKey: result.testKeys?.[0],
+      message: result.success ? 'Import successful' : (result.error || 'Import failed'),
       error: result.error,
       draftId: draft.id,
     });
@@ -566,25 +636,30 @@ router.post('/bulk-import', async (req, res) => {
       drafts.push(draft);
     }
 
-    // Import directly to Xray (no temp file needed)
+    // Import directly to Xray and wait for completion
     const testCasesForImport = drafts.map((draft) => ({
       summary: draft.summary,
       description: draft.description || '',
       testType: draft.testType,
       labels: draft.labels || [],
       steps: draft.steps || [],
+      projectKey: draft.projectKey,
     }));
 
-    const result = await importToXray(testCasesForImport);
+    // Use first draft's projectKey for bulk import (all should be same project)
+    const result = await importToXrayAndWait(testCasesForImport, drafts[0]?.projectKey);
 
     // Mark all drafts as imported immediately on success
     if (result.success) {
-      for (const draft of drafts) {
+      for (let i = 0; i < drafts.length; i++) {
+        const draft = drafts[i];
         const updatedDraft = {
           ...draft,
           status: 'imported',
           importedAt: Date.now(),
           updatedAt: Date.now(),
+          testIssueId: result.testIssueIds?.[i],
+          testKey: result.testKeys?.[i],
         };
         writeDraft(draft.id, updatedDraft);
       }
@@ -593,7 +668,9 @@ router.post('/bulk-import', async (req, res) => {
     res.json({
       success: result.success,
       jobId: result.jobId,
-      message: result.message || result.error || 'Import failed',
+      testIssueIds: result.testIssueIds,
+      testKeys: result.testKeys,
+      message: result.success ? 'Import successful' : (result.error || 'Import failed'),
       error: result.error,
       importedCount: drafts.length,
       draftIds: ids,

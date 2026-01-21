@@ -583,4 +583,75 @@ describe('Server API', () => {
       expect(res.body.success).toBe(false);
     });
   });
+
+  describe('Drafts Xray Links API', () => {
+    let testDraftId;
+
+    beforeAll(async () => {
+      // Create a draft for testing xray links
+      const draft = {
+        summary: 'XrayLinks Test Case',
+        description: 'Description',
+        testType: 'Manual',
+        labels: [],
+        steps: [{ action: 'Step', data: '', result: 'Result' }],
+        status: 'imported',
+        testIssueId: 'test-issue-123',
+      };
+
+      const res = await request(app)
+        .post('/api/drafts?project=TEST')
+        .send({ draft });
+
+      testDraftId = res.body.id;
+    });
+
+    afterAll(async () => {
+      if (testDraftId) {
+        await request(app).delete(`/api/drafts/${testDraftId}`);
+      }
+    });
+
+    it('PATCH /api/drafts/:id/xray-links should update xray links', async () => {
+      if (!testDraftId) return;
+
+      const xrayLinking = {
+        testPlanIds: ['plan-1', 'plan-2'],
+        testExecutionIds: ['exec-1'],
+        testSetIds: [],
+        folderPath: '/Smoke',
+        preconditionIds: [],
+        testPlanDisplays: [{ id: 'plan-1', display: 'WCP-100: Plan 1' }],
+        testExecutionDisplays: [{ id: 'exec-1', display: 'WCP-200: Exec 1' }],
+      };
+
+      const res = await request(app)
+        .patch(`/api/drafts/${testDraftId}/xray-links`)
+        .send({ xrayLinking });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.draft.xrayLinking).toEqual(xrayLinking);
+    });
+
+    it('PATCH /api/drafts/:id/xray-links should return 404 for non-existent draft', async () => {
+      const res = await request(app)
+        .patch('/api/drafts/non-existent-id/xray-links')
+        .send({ xrayLinking: {} });
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('PATCH /api/drafts/:id/xray-links should reject missing xrayLinking', async () => {
+      if (!testDraftId) return;
+
+      const res = await request(app)
+        .patch(`/api/drafts/${testDraftId}/xray-links`)
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
 });

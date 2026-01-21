@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import Modal from './Modal';
+import StepProgressBar, { getCompletedSteps, getCurrentStep } from './StepProgressBar';
 import { bulkImportDrafts, updateDraft } from '../utils/api';
 
-function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast, collections = [], onCollectionsChange }) {
+function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuccess, onImportError, onRefresh, showToast, collections = [], onCollectionsChange, config }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkImporting, setBulkImporting] = useState(false);
   const [filterCollection, setFilterCollection] = useState('all');
   const [showCollectionMenu, setShowCollectionMenu] = useState(null);
@@ -117,6 +119,14 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
     setDeleteTargetId(null);
   }
 
+  async function executeBulkDelete() {
+    for (const id of selectedIds) {
+      await onDelete(id);
+    }
+    setSelectedIds(new Set());
+    setShowBulkDeleteModal(false);
+  }
+
   async function handleBulkImport() {
     if (selectedIds.size === 0) return;
 
@@ -175,9 +185,23 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
   }
 
   function canSelect(tc) {
-    // Can select if complete and not already imported
+    // Drafts: can select if complete and not already imported
+    // Imported: can always select
+    if (isImportedView) {
+      return true;
+    }
     return tc.isComplete && tc.status !== 'imported';
   }
+
+  function selectAll() {
+    const selectableIds = filteredAndSorted
+      .filter((tc) => canSelect(tc))
+      .map((tc) => tc.id);
+    setSelectedIds(new Set(selectableIds));
+  }
+
+  const allSelected = filteredAndSorted.length > 0 &&
+    filteredAndSorted.filter((tc) => canSelect(tc)).every((tc) => selectedIds.has(tc.id));
 
   // Check if there are any test cases for this view
   const hasTestCases = testCases.some((tc) =>
@@ -273,8 +297,41 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
         </div>
       </div>
 
-      {/* Bulk actions - only show on drafts view */}
-      {!isImportedView && selectedIds.size > 0 && (
+      {/* Selection header - Select All checkbox */}
+      {filteredAndSorted.length > 0 && (
+        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => allSelected ? deselectAll() : selectAll()}
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
+              ${allSelected
+                ? 'bg-primary-500 border-primary-500'
+                : selectedIds.size > 0
+                  ? 'bg-primary-200 border-primary-500'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-primary-400'
+              } cursor-pointer`}
+          >
+            {allSelected && (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+            {!allSelected && selectedIds.size > 0 && (
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1 4h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} of ${filteredAndSorted.length} selected`
+              : `Select all (${filteredAndSorted.length})`
+            }
+          </span>
+        </div>
+      )}
+
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
         <div className="flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg mb-4 animate-slide-down">
           <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
             {selectedIds.size} selected
@@ -283,26 +340,39 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
             <button onClick={deselectAll} className="btn btn-ghost btn-sm">
               Deselect All
             </button>
-            <button
-              onClick={handleBulkImport}
-              disabled={bulkImporting}
-              className="btn btn-primary btn-sm"
-            >
-              {bulkImporting ? (
-                <>
-                  <span className="spinner"></span>
-                  Importing...
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 2v8M4 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                  Import Selected
-                </>
-              )}
-            </button>
+            {!isImportedView && (
+              <button
+                onClick={handleBulkImport}
+                disabled={bulkImporting}
+                className="btn btn-primary btn-sm"
+              >
+                {bulkImporting ? (
+                  <>
+                    <span className="spinner"></span>
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 2v8M4 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    Import Selected
+                  </>
+                )}
+              </button>
+            )}
+            {isImportedView && (
+              <button
+                onClick={() => setShowBulkDeleteModal(true)}
+                className="btn btn-danger btn-sm"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Delete Selected
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -328,31 +398,31 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
                     : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700'
                 }`}
             >
-              {/* Checkbox - only show on drafts view */}
-              {!isImportedView && (
-                <button
-                  onClick={() => canSelect(tc) && toggleSelect(tc.id)}
-                  disabled={!canSelect(tc)}
-                  title={
-                    tc.isComplete
+              {/* Checkbox */}
+              <button
+                onClick={() => canSelect(tc) && toggleSelect(tc.id)}
+                disabled={!canSelect(tc)}
+                title={
+                  isImportedView
+                    ? 'Select test case'
+                    : tc.isComplete
                       ? 'Select for import'
                       : 'Complete all required fields to import'
-                  }
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
-                    ${!canSelect(tc)
-                      ? 'border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-40'
-                      : selectedIds.has(tc.id)
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 cursor-pointer'
-                    }`}
-                >
-                  {selectedIds.has(tc.id) && canSelect(tc) && (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </button>
-              )}
+                }
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
+                  ${!canSelect(tc)
+                    ? 'border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-40'
+                    : selectedIds.has(tc.id)
+                      ? 'bg-primary-500 border-primary-500'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 cursor-pointer'
+                  }`}
+              >
+                {selectedIds.has(tc.id) && canSelect(tc) && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
@@ -361,6 +431,18 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
                     {tc.summary || 'Untitled'}
                   </span>
                   {getStatusBadge(tc)}
+                  {/* Jira testKey badge for imported TCs */}
+                  {tc.testKey && (
+                    <a
+                      href={`${config?.jiraBaseUrl || 'https://your-domain.atlassian.net'}/browse/${tc.testKey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {tc.testKey}
+                    </a>
+                  )}
                   {/* Collection badge */}
                   {tc.collectionId && getCollection(tc.collectionId) && (
                     <span
@@ -378,6 +460,15 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
                   {tc.status === 'imported' && tc.importedAt && (
                     <span className="text-blue-500">Imported {formatDate(tc.importedAt)}</span>
                   )}
+                </div>
+                {/* Progress indicator */}
+                <div className="mt-2">
+                  <StepProgressBar
+                    currentStep={getCurrentStep(tc)}
+                    completedSteps={getCompletedSteps(tc)}
+                    status={tc.status}
+                    compact
+                  />
                 </div>
                 {tc.labels?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -492,6 +583,38 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
               </button>
               <button onClick={executeDelete} className="btn btn-danger flex-1">
                 Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteModal && (
+        <Modal onClose={() => setShowBulkDeleteModal(false)}>
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M9 9h6M10 9v-1.5a1.5 1.5 0 011.5-1.5h1a1.5 1.5 0 011.5 1.5V9M10 9v9a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5V9" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Delete {selectedIds.size} Test Case{selectedIds.size !== 1 ? 's' : ''}?
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              This will permanently delete the selected test cases from your local storage.
+              {isImportedView && (
+                <span className="block mt-2 text-blue-500">
+                  Note: This will NOT remove them from Xray.
+                </span>
+              )}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBulkDeleteModal(false)} className="btn btn-secondary flex-1">
+                Cancel
+              </button>
+              <button onClick={executeBulkDelete} className="btn btn-danger flex-1">
+                Delete {selectedIds.size} Test Case{selectedIds.size !== 1 ? 's' : ''}
               </button>
             </div>
           </div>

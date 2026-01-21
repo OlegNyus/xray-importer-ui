@@ -11,6 +11,11 @@ import {
   fetchCollections,
   createCollection,
   deleteCollection,
+  fetchTestPlans,
+  fetchTestExecutions,
+  fetchTestSets,
+  fetchPreconditions,
+  fetchFolders,
 } from '../utils/api';
 
 const STORAGE_KEY = 'raydrop_saved_test_cases';
@@ -25,6 +30,32 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [collections, setCollections] = useState([]);
+
+  // Xray entities cache
+  const [xrayEntitiesCache, setXrayEntitiesCache] = useState({
+    projectKey: null,
+    testPlans: [],
+    testExecutions: [],
+    testSets: [],
+    preconditions: [],
+    folders: null,
+    projectId: null,
+    loading: {
+      testPlans: false,
+      testExecutions: false,
+      testSets: false,
+      preconditions: false,
+      folders: false,
+    },
+    errors: {
+      testPlans: null,
+      testExecutions: null,
+      testSets: null,
+      preconditions: null,
+      folders: null,
+    },
+    loaded: false,
+  });
 
   // Load drafts from API
   const loadDrafts = useCallback(async () => {
@@ -51,6 +82,136 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
     }
   }, []);
 
+  // Load Xray entities for a project (with caching)
+  const loadXrayEntities = useCallback(async (projectKey, forceRefresh = false) => {
+    if (!projectKey) return;
+
+    // If cache is valid and not forcing refresh, skip
+    if (!forceRefresh && xrayEntitiesCache.projectKey === projectKey && xrayEntitiesCache.loaded) {
+      return;
+    }
+
+    // Reset cache for new project
+    setXrayEntitiesCache((prev) => ({
+      ...prev,
+      projectKey,
+      loading: {
+        testPlans: true,
+        testExecutions: true,
+        testSets: true,
+        preconditions: true,
+        folders: true,
+      },
+      errors: {
+        testPlans: null,
+        testExecutions: null,
+        testSets: null,
+        preconditions: null,
+        folders: null,
+      },
+    }));
+
+    // Load all entities in parallel
+    const loadTestPlans = async () => {
+      try {
+        const result = await fetchTestPlans(projectKey);
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          testPlans: result.testPlans || [],
+          loading: { ...prev.loading, testPlans: false },
+        }));
+      } catch (err) {
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          loading: { ...prev.loading, testPlans: false },
+          errors: { ...prev.errors, testPlans: err.message },
+        }));
+      }
+    };
+
+    const loadTestExecutions = async () => {
+      try {
+        const result = await fetchTestExecutions(projectKey);
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          testExecutions: result.testExecutions || [],
+          loading: { ...prev.loading, testExecutions: false },
+        }));
+      } catch (err) {
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          loading: { ...prev.loading, testExecutions: false },
+          errors: { ...prev.errors, testExecutions: err.message },
+        }));
+      }
+    };
+
+    const loadTestSets = async () => {
+      try {
+        const result = await fetchTestSets(projectKey);
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          testSets: result.testSets || [],
+          loading: { ...prev.loading, testSets: false },
+        }));
+      } catch (err) {
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          loading: { ...prev.loading, testSets: false },
+          errors: { ...prev.errors, testSets: err.message },
+        }));
+      }
+    };
+
+    const loadPreconditions = async () => {
+      try {
+        const result = await fetchPreconditions(projectKey);
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          preconditions: result.preconditions || [],
+          loading: { ...prev.loading, preconditions: false },
+        }));
+      } catch (err) {
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          loading: { ...prev.loading, preconditions: false },
+          errors: { ...prev.errors, preconditions: err.message },
+        }));
+      }
+    };
+
+    const loadFolders = async () => {
+      try {
+        const result = await fetchFolders(projectKey);
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          folders: result.folders,
+          projectId: result.projectId,
+          loading: { ...prev.loading, folders: false },
+        }));
+      } catch (err) {
+        setXrayEntitiesCache((prev) => ({
+          ...prev,
+          loading: { ...prev.loading, folders: false },
+          errors: { ...prev.errors, folders: err.message },
+        }));
+      }
+    };
+
+    await Promise.all([
+      loadTestPlans(),
+      loadTestExecutions(),
+      loadTestSets(),
+      loadPreconditions(),
+      loadFolders(),
+    ]);
+
+    setXrayEntitiesCache((prev) => ({
+      ...prev,
+      loaded: true,
+    }));
+  }, [xrayEntitiesCache.projectKey, xrayEntitiesCache.loaded]);
+
   // Load drafts and collections when activeProject changes
   useEffect(() => {
     if (activeProject) {
@@ -59,6 +220,31 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
       // Reset editing state when project changes
       setEditingId(null);
       setHasUnsavedChanges(false);
+      // Reset Xray cache when project changes
+      setXrayEntitiesCache({
+        projectKey: null,
+        testPlans: [],
+        testExecutions: [],
+        testSets: [],
+        preconditions: [],
+        folders: null,
+        projectId: null,
+        loading: {
+          testPlans: false,
+          testExecutions: false,
+          testSets: false,
+          preconditions: false,
+          folders: false,
+        },
+        errors: {
+          testPlans: null,
+          testExecutions: null,
+          testSets: null,
+          preconditions: null,
+          folders: null,
+        },
+        loaded: false,
+      });
     }
   }, [loadDrafts, loadCollections, activeProject]);
 
@@ -417,6 +603,9 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
             showToast={showToast}
             collections={collections}
             onCreateCollection={handleCreateCollection}
+            xrayEntitiesCache={xrayEntitiesCache}
+            onLoadXrayEntities={loadXrayEntities}
+            onRefresh={refreshDrafts}
           />
         )}
 
@@ -431,6 +620,7 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
             onRefresh={refreshDrafts}
             showToast={showToast}
             collections={collections}
+            config={config}
           />
         )}
 
@@ -445,6 +635,7 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
             onRefresh={refreshDrafts}
             showToast={showToast}
             collections={collections}
+            config={config}
           />
         )}
 

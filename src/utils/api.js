@@ -269,3 +269,81 @@ export async function saveProjectSettings(projectKey, settings) {
   });
   return handleResponse(response);
 }
+
+// ============ Xray Entity Management ============
+
+/**
+ * Fetch Test Plans for a project
+ */
+export async function fetchTestPlans(projectKey) {
+  const response = await fetch(`${API_BASE}/xray/test-plans/${projectKey}`);
+  return handleResponse(response);
+}
+
+/**
+ * Fetch Test Executions for a project
+ */
+export async function fetchTestExecutions(projectKey) {
+  const response = await fetch(`${API_BASE}/xray/test-executions/${projectKey}`);
+  return handleResponse(response);
+}
+
+/**
+ * Fetch Test Sets for a project
+ */
+export async function fetchTestSets(projectKey) {
+  const response = await fetch(`${API_BASE}/xray/test-sets/${projectKey}`);
+  return handleResponse(response);
+}
+
+/**
+ * Fetch Preconditions for a project
+ */
+export async function fetchPreconditions(projectKey) {
+  const response = await fetch(`${API_BASE}/xray/preconditions/${projectKey}`);
+  return handleResponse(response);
+}
+
+/**
+ * Fetch Folders for a project
+ */
+export async function fetchFolders(projectKey, path = '/') {
+  const response = await fetch(`${API_BASE}/xray/folders/${projectKey}?path=${encodeURIComponent(path)}`);
+  return handleResponse(response);
+}
+
+/**
+ * Link test to Xray entities (Test Plan, Test Execution, Test Set, Folder, Preconditions)
+ */
+export async function linkTestToEntities(linkData) {
+  const response = await fetch(`${API_BASE}/xray/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(linkData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update test links in Xray (add/remove from Test Plans, Executions, Sets, etc.)
+ */
+export async function updateTestLinks(data) {
+  const response = await fetch(`${API_BASE}/xray/update-links`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update draft xrayLinking data
+ */
+export async function updateDraftXrayLinks(id, xrayLinking) {
+  const response = await fetch(`${API_BASE}/drafts/${id}/xray-links`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ xrayLinking }),
+  });
+  return handleResponse(response);
+}
