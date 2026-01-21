@@ -20,7 +20,7 @@ describe('SetupForm', () => {
 
   it('should render description text', () => {
     render(<SetupForm onComplete={mockOnComplete} />);
-    expect(screen.getByText('Configure your Xray Cloud credentials to get started')).toBeInTheDocument();
+    expect(screen.getByText('Configure your Xray Cloud credentials and Jira base URL')).toBeInTheDocument();
   });
 
   it('should render all form fields', () => {
@@ -28,23 +28,23 @@ describe('SetupForm', () => {
     expect(screen.getByPlaceholderText('Enter your Xray Client ID')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your Xray Client Secret')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('https://your-domain.atlassian.net/')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('e.g. PROJ')).toBeInTheDocument();
   });
 
   it('should have empty values on first run (no initialConfig)', () => {
     render(<SetupForm onComplete={mockOnComplete} />);
     expect(screen.getByPlaceholderText('https://your-domain.atlassian.net/')).toHaveValue('');
-    expect(screen.getByPlaceholderText('e.g. PROJ')).toHaveValue('');
   });
 
   it('should use initialConfig values when provided', () => {
     const initialConfig = {
+      xrayClientId: 'my-client-id',
+      xrayClientSecret: 'my-secret',
       jiraBaseUrl: 'https://custom.atlassian.net/',
-      projectKey: 'PROJ',
     };
     render(<SetupForm onComplete={mockOnComplete} initialConfig={initialConfig} />);
+    expect(screen.getByPlaceholderText('Enter your Xray Client ID')).toHaveValue('my-client-id');
+    expect(screen.getByPlaceholderText('Enter your Xray Client Secret')).toHaveValue('my-secret');
     expect(screen.getByPlaceholderText('https://your-domain.atlassian.net/')).toHaveValue('https://custom.atlassian.net/');
-    expect(screen.getByPlaceholderText('e.g. PROJ')).toHaveValue('PROJ');
   });
 
   it('should update form values on change', () => {
@@ -53,14 +53,6 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     fireEvent.change(clientIdInput, { target: { value: 'test-client-id', name: 'xrayClientId' } });
     expect(clientIdInput).toHaveValue('test-client-id');
-  });
-
-  it('should force uppercase and remove non-letters for projectKey', () => {
-    render(<SetupForm onComplete={mockOnComplete} />);
-
-    const projectKeyInput = screen.getByPlaceholderText('e.g. PROJ');
-    fireEvent.change(projectKeyInput, { target: { value: 'abc123', name: 'projectKey' } });
-    expect(projectKeyInput).toHaveValue('ABC');
   });
 
   it('should show error when Client ID is empty', async () => {
@@ -104,27 +96,6 @@ describe('SetupForm', () => {
     });
   });
 
-  // URL format validation is tested implicitly through integration
-  // The URL constructor throws for invalid URLs, and this is validated on the server as well
-
-  it('should show error when Project Key is empty', async () => {
-    render(<SetupForm onComplete={mockOnComplete} />);
-
-    const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
-    const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
-
-    fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
-    fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
-    fireEvent.change(keyInput, { target: { value: '', name: 'projectKey' } });
-
-    fireEvent.click(screen.getByText('Validate & Save Configuration'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Project Key is required')).toBeInTheDocument();
-    });
-  });
-
   it('should clear error when user types', async () => {
     render(<SetupForm onComplete={mockOnComplete} />);
 
@@ -148,12 +119,10 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
     const urlInput = screen.getByPlaceholderText('https://your-domain.atlassian.net/');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
 
     fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
     fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
     fireEvent.change(urlInput, { target: { value: 'https://test.atlassian.net/', name: 'jiraBaseUrl' } });
-    fireEvent.change(keyInput, { target: { value: 'TEST', name: 'projectKey' } });
 
     fireEvent.click(screen.getByText('Validate & Save Configuration'));
 
@@ -162,7 +131,6 @@ describe('SetupForm', () => {
         xrayClientId: 'test-id',
         xrayClientSecret: 'test-secret',
         jiraBaseUrl: 'https://test.atlassian.net/',
-        projectKey: 'TEST',
       });
       expect(mockOnComplete).toHaveBeenCalled();
     });
@@ -176,12 +144,10 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
     const urlInput = screen.getByPlaceholderText('https://your-domain.atlassian.net/');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
 
     fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
     fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
     fireEvent.change(urlInput, { target: { value: 'https://test.atlassian.net/', name: 'jiraBaseUrl' } });
-    fireEvent.change(keyInput, { target: { value: 'TEST', name: 'projectKey' } });
 
     fireEvent.click(screen.getByText('Validate & Save Configuration'));
 
@@ -196,12 +162,10 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
     const urlInput = screen.getByPlaceholderText('https://your-domain.atlassian.net/');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
 
     fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
     fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
     fireEvent.change(urlInput, { target: { value: 'https://test.atlassian.net/', name: 'jiraBaseUrl' } });
-    fireEvent.change(keyInput, { target: { value: 'TEST', name: 'projectKey' } });
 
     fireEvent.click(screen.getByText('Validate & Save Configuration'));
 
@@ -218,12 +182,10 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
     const urlInput = screen.getByPlaceholderText('https://your-domain.atlassian.net/');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
 
     fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
     fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
     fireEvent.change(urlInput, { target: { value: 'https://test.atlassian.net/', name: 'jiraBaseUrl' } });
-    fireEvent.change(keyInput, { target: { value: 'TEST', name: 'projectKey' } });
 
     fireEvent.click(screen.getByText('Validate & Save Configuration'));
 
@@ -240,17 +202,14 @@ describe('SetupForm', () => {
     const clientIdInput = screen.getByPlaceholderText('Enter your Xray Client ID');
     const secretInput = screen.getByPlaceholderText('Enter your Xray Client Secret');
     const urlInput = screen.getByPlaceholderText('https://your-domain.atlassian.net/');
-    const keyInput = screen.getByPlaceholderText('e.g. PROJ');
 
     fireEvent.change(clientIdInput, { target: { value: 'test-id', name: 'xrayClientId' } });
     fireEvent.change(secretInput, { target: { value: 'test-secret', name: 'xrayClientSecret' } });
     fireEvent.change(urlInput, { target: { value: 'https://test.atlassian.net/', name: 'jiraBaseUrl' } });
-    fireEvent.change(keyInput, { target: { value: 'TEST', name: 'projectKey' } });
 
     fireEvent.click(screen.getByText('Validate & Save Configuration'));
 
     await waitFor(() => {
-      // Now displays the actual error message from the exception
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
@@ -271,7 +230,7 @@ describe('SetupForm', () => {
 
     it('should show update description when editing', () => {
       render(<SetupForm onComplete={mockOnComplete} onCancel={mockOnCancel} isEditing={true} />);
-      expect(screen.getByText('Update your Xray Cloud credentials')).toBeInTheDocument();
+      expect(screen.getByText('Update your Xray Cloud credentials and Jira settings')).toBeInTheDocument();
     });
 
     it('should show Cancel button when editing', () => {
@@ -300,7 +259,6 @@ describe('SetupForm', () => {
         xrayClientId: 'my-client-id',
         xrayClientSecret: 'my-secret',
         jiraBaseUrl: 'https://test.atlassian.net/',
-        projectKey: 'TEST',
       };
       render(<SetupForm onComplete={mockOnComplete} onCancel={mockOnCancel} isEditing={true} initialConfig={initialConfig} />);
       expect(screen.getByPlaceholderText('Enter your Xray Client ID')).toHaveValue('my-client-id');

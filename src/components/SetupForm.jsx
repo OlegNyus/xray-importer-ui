@@ -8,19 +8,11 @@ function SetupForm({ onComplete, onCancel, initialConfig, isEditing }) {
     xrayClientId: initialConfig?.xrayClientId || '',
     xrayClientSecret: initialConfig?.xrayClientSecret || '',
     jiraBaseUrl: initialConfig?.jiraBaseUrl || '',
-    projectKey: initialConfig?.projectKey || '',
   });
 
   function handleChange(e) {
     const { name, value } = e.target;
-    let newValue = value;
-
-    // Force uppercase for project key
-    if (name === 'projectKey') {
-      newValue = value.toUpperCase().replace(/[^A-Z]/g, '');
-    }
-
-    setFormData((prev) => ({ ...prev, [name]: newValue }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     // Clear error when user types
     if (errors[name]) {
@@ -47,12 +39,6 @@ function SetupForm({ onComplete, onCancel, initialConfig, isEditing }) {
       } catch {
         newErrors.jiraBaseUrl = 'Please enter a valid URL';
       }
-    }
-
-    if (!formData.projectKey.trim()) {
-      newErrors.projectKey = 'Project Key is required';
-    } else if (!/^[A-Z]+$/.test(formData.projectKey)) {
-      newErrors.projectKey = 'Must be uppercase letters only';
     }
 
     setErrors(newErrors);
@@ -89,8 +75,8 @@ function SetupForm({ onComplete, onCancel, initialConfig, isEditing }) {
         </h1>
         <p className="text-gray-500 dark:text-gray-400">
           {isEditing
-            ? 'Update your Xray Cloud credentials'
-            : 'Configure your Xray Cloud credentials to get started'}
+            ? 'Update your Xray Cloud credentials and Jira settings'
+            : 'Configure your Xray Cloud credentials and Jira base URL'}
         </p>
       </div>
 
@@ -141,41 +127,21 @@ function SetupForm({ onComplete, onCancel, initialConfig, isEditing }) {
         <div className="space-y-4">
           <h3 className="font-medium text-gray-900 dark:text-white">Jira Configuration</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Jira Base URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="url"
-                name="jiraBaseUrl"
-                value={formData.jiraBaseUrl}
-                onChange={handleChange}
-                placeholder="https://your-domain.atlassian.net/"
-                className={`input ${errors.jiraBaseUrl ? 'input-error' : ''}`}
-              />
-              {errors.jiraBaseUrl && (
-                <p className="text-red-500 text-sm mt-1">{errors.jiraBaseUrl}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Project Key <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="projectKey"
-                value={formData.projectKey}
-                onChange={handleChange}
-                placeholder="e.g. PROJ"
-                className={`input ${errors.projectKey ? 'input-error' : ''}`}
-              />
-              {errors.projectKey && (
-                <p className="text-red-500 text-sm mt-1">{errors.projectKey}</p>
-              )}
-              <p className="text-gray-400 text-xs mt-1">Uppercase only</p>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Jira Base URL <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              name="jiraBaseUrl"
+              value={formData.jiraBaseUrl}
+              onChange={handleChange}
+              placeholder="https://your-domain.atlassian.net/"
+              className={`input ${errors.jiraBaseUrl ? 'input-error' : ''}`}
+            />
+            {errors.jiraBaseUrl && (
+              <p className="text-red-500 text-sm mt-1">{errors.jiraBaseUrl}</p>
+            )}
           </div>
         </div>
 

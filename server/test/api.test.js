@@ -130,11 +130,11 @@ describe('Server API', () => {
     });
 
     it('POST /api/config should save valid config', async () => {
+      // Config no longer includes projectKey - that's managed separately
       const config = {
         xrayClientId: 'test-client-id',
         xrayClientSecret: 'test-client-secret',
         jiraBaseUrl: 'https://test.atlassian.net/',
-        projectKey: 'TEST',
       };
 
       const res = await request(app)
@@ -157,7 +157,6 @@ describe('Server API', () => {
         xrayClientId: 'invalid-client-id',
         xrayClientSecret: 'invalid-secret',
         jiraBaseUrl: 'https://test.atlassian.net/',
-        projectKey: 'TEST',
       };
 
       const res = await request(app)
@@ -174,7 +173,6 @@ describe('Server API', () => {
         xrayClientId: 'test-client-id',
         xrayClientSecret: 'test-client-secret',
         jiraBaseUrl: 'not-a-valid-url',
-        projectKey: 'TEST',
       };
 
       const res = await request(app)
@@ -185,21 +183,7 @@ describe('Server API', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('POST /api/config should reject invalid project key', async () => {
-      const config = {
-        xrayClientId: 'test-client-id',
-        xrayClientSecret: 'test-client-secret',
-        jiraBaseUrl: 'https://test.atlassian.net/',
-        projectKey: 'invalid123',
-      };
-
-      const res = await request(app)
-        .post('/api/config')
-        .send(config);
-
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
+    // Note: projectKey validation is no longer part of config - it's managed in project settings
   });
 
   describe('Settings API', () => {
@@ -352,14 +336,16 @@ describe('Server API', () => {
         steps: [{ action: 'Do something', data: '', result: 'Expected result' }],
       };
 
+      // projectKey is now required - pass via query param
       const res = await request(app)
-        .post('/api/drafts')
+        .post('/api/drafts?project=TEST')
         .send({ draft });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.id).toBeDefined();
       expect(res.body.draft.summary).toBe('Test Summary');
+      expect(res.body.draft.projectKey).toBe('TEST');
 
       testDraftId = res.body.id;
     });
@@ -490,8 +476,9 @@ describe('Server API', () => {
         ],
       };
 
+      // projectKey is required - pass via query param
       const res = await request(app)
-        .post('/api/drafts')
+        .post('/api/drafts?project=TEST')
         .send({ draft });
 
       completeDraftId = res.body.id;
@@ -504,7 +491,7 @@ describe('Server API', () => {
     });
 
     it('POST /api/drafts/:id/import should reject incomplete draft', async () => {
-      // Create incomplete draft
+      // Create incomplete draft (with projectKey via query param)
       const incompleteDraft = {
         summary: '',
         description: '',
@@ -512,7 +499,7 @@ describe('Server API', () => {
       };
 
       const createRes = await request(app)
-        .post('/api/drafts')
+        .post('/api/drafts?project=TEST')
         .send({ draft: incompleteDraft });
 
       const incompleteId = createRes.body.id;
@@ -570,6 +557,7 @@ describe('Server API', () => {
           summary: 'Migrated Test Case',
           description: 'Description',
           steps: [],
+          projectKey: 'TEST', // Include projectKey for migration
         },
       ];
 

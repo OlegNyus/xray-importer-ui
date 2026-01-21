@@ -358,13 +358,14 @@ function CollectionsView({
                           {tc.summary || 'Untitled'}
                         </span>
                         {tc.isComplete ? (
-                          <span className="text-xs px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded">
-                            Ready
+                          <span className="badge badge-success flex items-center gap-1">
+                            Draft
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
                           </span>
                         ) : (
-                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                            Draft
-                          </span>
+                          <span className="badge badge-draft">Draft</span>
                         )}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
