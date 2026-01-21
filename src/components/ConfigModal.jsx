@@ -18,7 +18,6 @@ function ConfigModal({ config, onClose, onEdit }) {
         <ConfigItem label="Client ID" value={config?.xrayClientId} truncate />
         <ConfigItem label="Client Secret" value={config?.xrayClientSecret} truncate />
         <ConfigItem label="Jira Base URL" value={config?.jiraBaseUrl} />
-        <ConfigItem label="Project Key" value={config?.projectKey} />
       </div>
 
       <div className="flex gap-3">

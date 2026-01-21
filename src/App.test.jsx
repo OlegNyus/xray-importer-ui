@@ -5,27 +5,40 @@ import * as api from './utils/api';
 
 vi.mock('./utils/api');
 vi.mock('./components/Header', () => ({
-  default: ({ isConfigured, darkMode, onToggleDarkMode, onReconfigure }) => (
+  default: ({ isConfigured, darkMode, onToggleDarkMode, onReconfigure, projects, activeProject, onSelectProject }) => (
     <header data-testid="header">
       <span data-testid="is-configured">{isConfigured ? 'yes' : 'no'}</span>
       <span data-testid="dark-mode">{darkMode ? 'dark' : 'light'}</span>
+      <span data-testid="active-project">{activeProject || 'none'}</span>
       <button data-testid="toggle-dark" onClick={onToggleDarkMode}>Toggle Dark</button>
       <button data-testid="reconfigure" onClick={onReconfigure}>Reconfigure</button>
+      {projects?.map(p => (
+        <button key={p} data-testid={`select-${p}`} onClick={() => onSelectProject(p)}>Select {p}</button>
+      ))}
     </header>
   ),
 }));
 vi.mock('./components/SetupForm', () => ({
   default: ({ onComplete }) => (
     <div data-testid="setup-form">
-      <button onClick={() => onComplete({ xrayClientId: 'id', xrayClientSecret: 'secret', jiraBaseUrl: 'https://test.atlassian.net', projectKey: 'TEST' })}>
+      <button onClick={() => onComplete({ xrayClientId: 'id', xrayClientSecret: 'secret', jiraBaseUrl: 'https://test.atlassian.net' })}>
         Complete Setup
       </button>
     </div>
   ),
 }));
+vi.mock('./components/ProjectSetupForm', () => ({
+  default: ({ onComplete, isFirstProject }) => (
+    <div data-testid="project-setup-form">
+      <span data-testid="is-first-project">{isFirstProject ? 'yes' : 'no'}</span>
+      <button onClick={() => onComplete('TEST', false)}>Add Project</button>
+    </div>
+  ),
+}));
 vi.mock('./components/TestCaseBuilder', () => ({
-  default: ({ onImportSuccess, onImportError, showToast }) => (
+  default: ({ onImportSuccess, onImportError, showToast, activeProject }) => (
     <div data-testid="test-case-builder">
+      <span data-testid="builder-project">{activeProject || 'none'}</span>
       <button onClick={() => onImportSuccess({ jobId: 'job-123', draftIds: ['d1', 'd2'] })}>
         Import Success
       </button>
@@ -72,19 +85,34 @@ vi.mock('./components/Modal', () => ({
     </div>
   ),
 }));
+vi.mock('./components/ProjectSettingsModal', () => ({
+  default: ({ onClose }) => (
+    <div data-testid="project-settings-modal">
+      <button data-testid="close-project-settings" onClick={onClose}>Close</button>
+    </div>
+  ),
+}));
 
 describe('App', () => {
+  // Config no longer includes projectKey - that's separate now
   const completeConfig = {
     xrayClientId: 'id',
     xrayClientSecret: 'secret',
     jiraBaseUrl: 'https://test.atlassian.net',
-    projectKey: 'TEST',
+  };
+
+  const projectsResponse = {
+    projects: ['TEST'],
+    hiddenProjects: [],
+    activeProject: 'TEST',
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
     api.fetchConfig.mockResolvedValue({ exists: false });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
+    api.setActiveProject.mockResolvedValue({ success: true });
     api.deleteDraft.mockResolvedValue({ success: true });
     api.updateDraftStatus.mockResolvedValue({ success: true });
     api.migrateDrafts.mockResolvedValue({ success: true, migrated: 2 });
@@ -112,12 +140,25 @@ describe('App', () => {
     });
   });
 
-  it('should show builder screen when config is complete', async () => {
+  it('should show project setup when config complete but no projects', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue({ projects: [], hiddenProjects: [], activeProject: null });
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-setup-form')).toBeInTheDocument();
+      expect(screen.getByTestId('is-first-project')).toHaveTextContent('yes');
+    });
+  });
+
+  it('should show builder screen when config and projects exist', async () => {
+    api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
       expect(screen.getByTestId('test-case-builder')).toBeInTheDocument();
+      expect(screen.getByTestId('builder-project')).toHaveTextContent('TEST');
     });
   });
 
@@ -132,8 +173,9 @@ describe('App', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should navigate to builder after setup complete', async () => {
+  it('should navigate to project setup after credentials setup complete', async () => {
     api.fetchConfig.mockResolvedValue({ exists: false });
+    api.fetchProjects.mockResolvedValue({ projects: [], hiddenProjects: [], activeProject: null });
     render(<App />);
 
     await waitFor(() => {
@@ -143,13 +185,30 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Complete Setup'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('test-case-builder')).toBeInTheDocument();
+      expect(screen.getByTestId('project-setup-form')).toBeInTheDocument();
       expect(screen.getByTestId('is-configured')).toHaveTextContent('yes');
+    });
+  });
+
+  it('should navigate to builder after project setup complete', async () => {
+    api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue({ projects: [], hiddenProjects: [], activeProject: null });
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-setup-form')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Add Project'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-case-builder')).toBeInTheDocument();
     });
   });
 
   it('should navigate to success screen on import success', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -166,6 +225,7 @@ describe('App', () => {
 
   it('should navigate to error screen on import error', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -182,6 +242,7 @@ describe('App', () => {
 
   it('should navigate back to builder from error screen', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -201,6 +262,7 @@ describe('App', () => {
 
   it('should navigate to welcome from error screen reconfigure', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -220,6 +282,7 @@ describe('App', () => {
 
   it('should navigate back to builder from success screen', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -239,6 +302,7 @@ describe('App', () => {
 
   it('should handle reconfigure from header (edit mode)', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -282,6 +346,7 @@ describe('App', () => {
   // Toast tests
   it('should show and close toast', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -305,6 +370,7 @@ describe('App', () => {
   // Post-import actions
   it('should handle post-import delete for array of draft IDs', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -327,6 +393,7 @@ describe('App', () => {
 
   it('should handle post-import delete for single draft ID', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -349,6 +416,7 @@ describe('App', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     api.deleteDraft.mockRejectedValue(new Error('Delete failed'));
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -370,6 +438,7 @@ describe('App', () => {
 
   it('should handle post-import keep for array of draft IDs', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -392,6 +461,7 @@ describe('App', () => {
 
   it('should handle post-import keep for single draft ID', async () => {
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -414,6 +484,7 @@ describe('App', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     api.updateDraftStatus.mockRejectedValue(new Error('Update failed'));
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -436,6 +507,7 @@ describe('App', () => {
   it('should not show migration modal when localStorage has empty array', async () => {
     localStorage.setItem('raydrop_saved_test_cases', JSON.stringify([]));
     api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue(projectsResponse);
     render(<App />);
 
     await waitFor(() => {
@@ -460,6 +532,42 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('setup-form')).toBeInTheDocument();
+    });
+  });
+
+  // Project switching tests
+  it('should switch active project', async () => {
+    api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue({
+      projects: ['TEST', 'DEMO'],
+      hiddenProjects: [],
+      activeProject: 'TEST',
+    });
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-case-builder')).toBeInTheDocument();
+      expect(screen.getByTestId('active-project')).toHaveTextContent('TEST');
+    });
+
+    fireEvent.click(screen.getByTestId('select-DEMO'));
+
+    await waitFor(() => {
+      expect(api.setActiveProject).toHaveBeenCalledWith('DEMO');
+    });
+  });
+
+  it('should show project setup when all projects are hidden', async () => {
+    api.fetchConfig.mockResolvedValue({ exists: true, config: completeConfig });
+    api.fetchProjects.mockResolvedValue({
+      projects: ['TEST'],
+      hiddenProjects: ['TEST'],
+      activeProject: null,
+    });
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-setup-form')).toBeInTheDocument();
     });
   });
 });

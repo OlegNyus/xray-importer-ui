@@ -15,7 +15,7 @@ import {
 
 const STORAGE_KEY = 'raydrop_saved_test_cases';
 
-function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) {
+function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError, showToast }) {
   const [activeTab, setActiveTab] = useState('create');
   const [savedTestCases, setSavedTestCases] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -51,11 +51,16 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
     }
   }, []);
 
-  // Load drafts and collections on mount
+  // Load drafts and collections when activeProject changes
   useEffect(() => {
-    loadDrafts();
-    loadCollections();
-  }, [loadDrafts, loadCollections]);
+    if (activeProject) {
+      loadDrafts();
+      loadCollections();
+      // Reset editing state when project changes
+      setEditingId(null);
+      setHasUnsavedChanges(false);
+    }
+  }, [loadDrafts, loadCollections, activeProject]);
 
   // Collection handlers
   const handleCreateCollection = useCallback(async (name, color) => {
@@ -120,7 +125,8 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
   const handleSaveDraft = useCallback(async (testCase) => {
     try {
       // Always save as draft status when using Save Draft button
-      const draftData = { ...testCase, status: 'draft' };
+      // Include projectKey from activeProject
+      const draftData = { ...testCase, status: 'draft', projectKey: activeProject };
 
       if (editingId) {
         // Update existing
@@ -149,7 +155,7 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
       console.error('Error saving draft:', err);
       showToast('Failed to save draft');
     }
-  }, [editingId, showToast]);
+  }, [editingId, activeProject, showToast]);
 
   const handleEdit = useCallback((id) => {
     if (hasUnsavedChanges) {
@@ -400,6 +406,7 @@ function TestCaseBuilder({ config, onImportSuccess, onImportError, showToast }) 
         {activeTab === 'create' && (
           <TestCaseForm
             config={config}
+            activeProject={activeProject}
             editingTestCase={getTestCaseToEdit()}
             editingId={editingId}
             onSaveDraft={handleSaveDraft}

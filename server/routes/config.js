@@ -9,7 +9,7 @@ const router = express.Router();
  * /config:
  *   get:
  *     summary: Get configuration
- *     description: Returns masked API credentials and project settings
+ *     description: Returns Xray API credentials and Jira base URL (no project key - projects are managed separately)
  *     tags: [Config]
  *     responses:
  *       200:
@@ -43,14 +43,13 @@ router.get('/', (req, res) => {
       });
     }
 
-    // Return full config (local app - no need to mask)
+    // Return config without projectKey (projects managed separately in settings)
     res.json({
       exists: true,
       config: {
         xrayClientId: config.xrayClientId,
         xrayClientSecret: config.xrayClientSecret,
         jiraBaseUrl: config.jiraBaseUrl,
-        projectKey: config.projectKey,
       },
     });
   } catch (error) {
@@ -66,7 +65,7 @@ router.get('/', (req, res) => {
  * /config:
  *   post:
  *     summary: Save configuration
- *     description: Save Xray API credentials and project settings
+ *     description: Save Xray API credentials and Jira base URL (project keys managed separately)
  *     tags: [Config]
  *     requestBody:
  *       required: true
@@ -78,7 +77,6 @@ router.get('/', (req, res) => {
  *               - xrayClientId
  *               - xrayClientSecret
  *               - jiraBaseUrl
- *               - projectKey
  *             properties:
  *               xrayClientId:
  *                 type: string
@@ -87,9 +85,6 @@ router.get('/', (req, res) => {
  *               jiraBaseUrl:
  *                 type: string
  *                 format: uri
- *               projectKey:
- *                 type: string
- *                 pattern: '^[A-Z]+$'
  *     responses:
  *       200:
  *         description: Config saved successfully
@@ -102,7 +97,7 @@ router.get('/', (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { xrayClientId, xrayClientSecret, jiraBaseUrl, projectKey } = req.body;
+    const { xrayClientId, xrayClientSecret, jiraBaseUrl } = req.body;
 
     // Validation
     const errors = [];
@@ -123,10 +118,6 @@ router.post('/', async (req, res) => {
       } catch {
         errors.push('jiraBaseUrl must be a valid URL');
       }
-    }
-
-    if (!projectKey || typeof projectKey !== 'string' || !/^[A-Z]+$/.test(projectKey)) {
-      errors.push('projectKey must be uppercase letters only');
     }
 
     if (errors.length > 0) {
@@ -150,12 +141,11 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Save config only if credentials are valid
+    // Save config only if credentials are valid (no projectKey - managed separately)
     const config = {
       xrayClientId: xrayClientId.trim(),
       xrayClientSecret: xrayClientSecret.trim(),
       jiraBaseUrl: jiraBaseUrl.trim(),
-      projectKey: projectKey.trim(),
     };
 
     const configPath = writeConfig(config);

@@ -2,6 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import {
   readConfig,
+  readSettings,
   listDrafts,
   readDraft,
   writeDraft,
@@ -53,6 +54,12 @@ function determineStatus(draft, existingStatus) {
  *   get:
  *     summary: List all drafts
  *     tags: [Drafts]
+ *     parameters:
+ *       - in: query
+ *         name: project
+ *         schema:
+ *           type: string
+ *         description: Filter by project key (uses active project if not specified)
  *     responses:
  *       200:
  *         description: List of drafts
@@ -70,12 +77,19 @@ function determineStatus(draft, existingStatus) {
  */
 router.get('/', (req, res) => {
   try {
-    const drafts = listDrafts().map((draft) => ({
+    // Get project from query or use active project
+    let projectKey = req.query.project;
+    if (!projectKey) {
+      const settings = readSettings();
+      projectKey = settings.activeProject;
+    }
+
+    const drafts = listDrafts(projectKey).map((draft) => ({
       ...draft,
       // Compute isComplete if not present (for older drafts)
       isComplete: draft.isComplete !== undefined ? draft.isComplete : isComplete(draft),
     }));
-    res.json({ success: true, drafts });
+    res.json({ success: true, drafts, projectKey });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -139,6 +153,12 @@ router.get('/:id', (req, res) => {
  *   post:
  *     summary: Create new draft
  *     tags: [Drafts]
+ *     parameters:
+ *       - in: query
+ *         name: project
+ *         schema:
+ *           type: string
+ *         description: Project key (uses active project if not specified)
  *     requestBody:
  *       required: true
  *       content:
@@ -161,12 +181,24 @@ router.post('/', (req, res) => {
       return res.status(400).json({ success: false, error: 'Draft data required' });
     }
 
+    // Get project from query, draft, or use active project
+    let projectKey = req.query.project || draft.projectKey;
+    if (!projectKey) {
+      const settings = readSettings();
+      projectKey = settings.activeProject;
+    }
+
+    if (!projectKey) {
+      return res.status(400).json({ success: false, error: 'No project specified' });
+    }
+
     const id = randomUUID();
     const now = Date.now();
 
     const newDraft = {
       ...draft,
       id,
+      projectKey,
       status: determineStatus(draft, null),
       isComplete: isComplete(draft),
       createdAt: now,
@@ -231,9 +263,13 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Draft not found' });
     }
 
+    // Use provided projectKey, or keep existing
+    const projectKey = draft.projectKey || existing.projectKey;
+
     const updatedDraft = {
       ...draft,
       id,
+      projectKey,
       status: determineStatus(draft, existing.status),
       isComplete: isComplete(draft),
       createdAt: existing.createdAt,

@@ -1,17 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import SetupForm from './components/SetupForm';
+import ProjectSetupForm from './components/ProjectSetupForm';
 import TestCaseBuilder from './components/TestCaseBuilder';
 import SuccessScreen from './components/SuccessScreen';
 import ErrorScreen from './components/ErrorScreen';
 import Toast from './components/Toast';
 import Modal from './components/Modal';
-import { fetchConfig, deleteDraft, updateDraftStatus, migrateDrafts } from './utils/api';
+import ProjectSettingsModal from './components/ProjectSettingsModal';
+import {
+  fetchConfig,
+  fetchProjects,
+  setActiveProject as setActiveProjectApi,
+  deleteDraft,
+  updateDraftStatus,
+  migrateDrafts,
+} from './utils/api';
 
 const STORAGE_KEY = 'raydrop_saved_test_cases';
 
 const SCREENS = {
   WELCOME: 'welcome',
+  PROJECT_SETUP: 'project_setup',
   BUILDER: 'builder',
   SUCCESS: 'success',
   ERROR: 'error',
@@ -32,6 +42,13 @@ function App() {
   const [migrationData, setMigrationData] = useState(null);
   const [migrating, setMigrating] = useState(false);
 
+  // Project state
+  const [projects, setProjects] = useState([]);
+  const [hiddenProjects, setHiddenProjects] = useState([]);
+  const [activeProject, setActiveProject] = useState(null);
+  const [projectSettings, setProjectSettings] = useState({});
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
+
   // Check for existing config on mount
   useEffect(() => {
     checkConfig();
@@ -49,10 +66,9 @@ function App() {
       if (result.exists && isConfigComplete(result.config)) {
         setConfig(result.config);
         setIsConfigured(true);
-        setScreen(SCREENS.BUILDER);
 
-        // Check for localStorage migration
-        checkMigration();
+        // Check for projects
+        await checkProjects();
       } else {
         // Config missing or incomplete - show welcome page
         setScreen(SCREENS.WELCOME);
@@ -63,14 +79,41 @@ function App() {
     }
   }
 
-  // Check if all required config fields are present
+  async function checkProjects() {
+    try {
+      const result = await fetchProjects();
+      setProjects(result.projects || []);
+      setHiddenProjects(result.hiddenProjects || []);
+      setActiveProject(result.activeProject);
+      setProjectSettings(result.projectSettings || {});
+
+      // Get visible projects
+      const visibleProjects = (result.projects || []).filter(
+        p => !(result.hiddenProjects || []).includes(p)
+      );
+
+      if (visibleProjects.length === 0) {
+        // No projects - show project setup
+        setScreen(SCREENS.PROJECT_SETUP);
+      } else {
+        // Has projects - go to builder
+        setScreen(SCREENS.BUILDER);
+        // Check for localStorage migration
+        checkMigration();
+      }
+    } catch (error) {
+      console.error('Failed to check projects:', error);
+      setScreen(SCREENS.PROJECT_SETUP);
+    }
+  }
+
+  // Check if all required config fields are present (no projectKey now)
   function isConfigComplete(config) {
     if (!config) return false;
     return !!(
       config.xrayClientId &&
       config.xrayClientSecret &&
-      config.jiraBaseUrl &&
-      config.projectKey
+      config.jiraBaseUrl
     );
   }
 
@@ -134,7 +177,33 @@ function App() {
     setConfig(newConfig);
     setIsConfigured(true);
     setIsEditingConfig(false);
+    // After credentials, check if we have projects
+    checkProjects();
+  }
+
+  async function handleProjectSetupComplete(projectKey, alreadyExists) {
+    // Fetch fresh project data from server (includes the color)
+    try {
+      const result = await fetchProjects();
+      setProjects(result.projects || []);
+      setHiddenProjects(result.hiddenProjects || []);
+      setActiveProject(result.activeProject);
+      setProjectSettings(result.projectSettings || {});
+    } catch (error) {
+      console.error('Failed to refresh projects:', error);
+      // Fallback: at least update projects list
+      if (!projects.includes(projectKey)) {
+        setProjects([...projects, projectKey]);
+      }
+      setActiveProject(projectKey);
+    }
+
     setScreen(SCREENS.BUILDER);
+    if (alreadyExists) {
+      showToast(`Project ${projectKey} was already configured`);
+    } else {
+      showToast(`Project ${projectKey} added successfully`);
+    }
   }
 
   function handleCancelEdit() {
@@ -159,6 +228,45 @@ function App() {
 
   function handleCreateAnother() {
     setScreen(SCREENS.BUILDER);
+  }
+
+  async function handleSelectProject(projectKey) {
+    try {
+      await setActiveProjectApi(projectKey);
+      setActiveProject(projectKey);
+    } catch (error) {
+      console.error('Failed to set active project:', error);
+      showToast('Failed to switch project');
+    }
+  }
+
+  function handleOpenProjectSettings() {
+    setShowProjectSettings(true);
+  }
+
+  function handleProjectSettingsClose() {
+    setShowProjectSettings(false);
+  }
+
+  async function handleProjectsUpdated() {
+    // Refresh projects after settings change
+    try {
+      const result = await fetchProjects();
+      setProjects(result.projects || []);
+      setHiddenProjects(result.hiddenProjects || []);
+      setActiveProject(result.activeProject);
+      setProjectSettings(result.projectSettings || {});
+
+      // Check if we still have visible projects
+      const visibleProjects = (result.projects || []).filter(
+        p => !(result.hiddenProjects || []).includes(p)
+      );
+      if (visibleProjects.length === 0) {
+        setScreen(SCREENS.PROJECT_SETUP);
+      }
+    } catch (error) {
+      console.error('Failed to refresh projects:', error);
+    }
   }
 
   async function handlePostImportDelete(draftIds) {
@@ -203,6 +311,12 @@ function App() {
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(!darkMode)}
         onReconfigure={handleReconfigure}
+        projects={projects}
+        hiddenProjects={hiddenProjects}
+        activeProject={activeProject}
+        projectSettings={projectSettings}
+        onSelectProject={handleSelectProject}
+        onOpenProjectSettings={handleOpenProjectSettings}
       />
 
       <main className="flex-1 p-3 sm:p-6 flex justify-center items-start">
@@ -216,9 +330,17 @@ function App() {
             />
           )}
 
+          {screen === SCREENS.PROJECT_SETUP && (
+            <ProjectSetupForm
+              onComplete={handleProjectSetupComplete}
+              isFirstProject={projects.length === 0}
+            />
+          )}
+
           {screen === SCREENS.BUILDER && (
             <TestCaseBuilder
               config={config}
+              activeProject={activeProject}
               onImportSuccess={handleImportSuccess}
               onImportError={handleImportError}
               showToast={showToast}
@@ -246,7 +368,7 @@ function App() {
       </main>
 
       <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700">
-        RayDrop &bull; v2.0.0
+        RayDrop &bull; v2.1.0
       </footer>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
@@ -289,6 +411,19 @@ function App() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && (
+        <ProjectSettingsModal
+          projects={projects}
+          hiddenProjects={hiddenProjects}
+          activeProject={activeProject}
+          projectSettings={projectSettings}
+          onClose={handleProjectSettingsClose}
+          onProjectsUpdated={handleProjectsUpdated}
+          showToast={showToast}
+        />
       )}
     </div>
   );

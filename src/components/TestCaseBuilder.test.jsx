@@ -23,20 +23,21 @@ vi.mock('./SavedTestCases', () => ({
 }));
 
 describe('TestCaseBuilder', () => {
+  // Config no longer has projectKey - it's passed separately as activeProject
   const mockConfig = {
-    projectKey: 'TEST',
     xrayClientId: 'test-id',
     xrayClientSecret: 'test-secret',
     jiraBaseUrl: 'https://test.atlassian.net',
   };
 
   const mockDrafts = [
-    { id: 'tc-1', summary: 'Test 1', status: 'draft' },
-    { id: 'tc-2', summary: 'Test 2', status: 'imported' },
+    { id: 'tc-1', summary: 'Test 1', status: 'draft', projectKey: 'TEST' },
+    { id: 'tc-2', summary: 'Test 2', status: 'imported', projectKey: 'TEST' },
   ];
 
   const defaultProps = {
     config: mockConfig,
+    activeProject: 'TEST',
     onImportSuccess: vi.fn(),
     onImportError: vi.fn(),
     showToast: vi.fn(),

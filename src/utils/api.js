@@ -197,3 +197,75 @@ export async function deleteCollection(id) {
   });
   return handleResponse(response);
 }
+
+// ============ Project Management ============
+
+/**
+ * Get all projects
+ */
+export async function fetchProjects() {
+  const response = await fetch(`${API_BASE}/settings/projects`);
+  return handleResponse(response);
+}
+
+/**
+ * Add a new project
+ */
+export async function addProject(projectKey, color) {
+  const response = await fetch(`${API_BASE}/settings/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectKey, color }),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Hide a project
+ */
+export async function hideProject(projectKey) {
+  const response = await fetch(`${API_BASE}/settings/projects/${projectKey}/hide`, {
+    method: 'POST',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Unhide a project
+ */
+export async function unhideProject(projectKey) {
+  const response = await fetch(`${API_BASE}/settings/projects/${projectKey}/unhide`, {
+    method: 'POST',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Set active project
+ */
+export async function setActiveProject(projectKey) {
+  const response = await fetch(`${API_BASE}/settings/projects/${projectKey}/activate`, {
+    method: 'POST',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Get project settings
+ */
+export async function fetchProjectSettings(projectKey) {
+  const response = await fetch(`${API_BASE}/settings/projects/${projectKey}`);
+  return handleResponse(response);
+}
+
+/**
+ * Save project settings
+ */
+export async function saveProjectSettings(projectKey, settings) {
+  const response = await fetch(`${API_BASE}/settings/projects/${projectKey}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings }),
+  });
+  return handleResponse(response);
+}

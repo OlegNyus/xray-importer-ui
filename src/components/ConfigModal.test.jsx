@@ -31,9 +31,8 @@ describe('ConfigModal', () => {
     // Credentials should be truncated (first 6 + ... + last 6)
     expect(screen.getByText('ABC123...GHI789')).toBeInTheDocument();
     expect(screen.getByText('secret...789xyz')).toBeInTheDocument();
-    // Other values shown in full
+    // Jira URL shown in full
     expect(screen.getByText('https://test.atlassian.net')).toBeInTheDocument();
-    expect(screen.getByText('TEST')).toBeInTheDocument();
   });
 
   it('should display labels for config items', () => {
@@ -41,19 +40,18 @@ describe('ConfigModal', () => {
     expect(screen.getByText('Client ID')).toBeInTheDocument();
     expect(screen.getByText('Client Secret')).toBeInTheDocument();
     expect(screen.getByText('Jira Base URL')).toBeInTheDocument();
-    expect(screen.getByText('Project Key')).toBeInTheDocument();
   });
 
   it('should display dash when config value is missing', () => {
     render(<ConfigModal {...defaultProps} config={{}} />);
     const dashes = screen.getAllByText('-');
-    expect(dashes.length).toBe(4);
+    expect(dashes.length).toBe(3);
   });
 
   it('should display dash when config is null', () => {
     render(<ConfigModal {...defaultProps} config={null} />);
     const dashes = screen.getAllByText('-');
-    expect(dashes.length).toBe(4);
+    expect(dashes.length).toBe(3);
   });
 
   it('should call onClose when Close button is clicked', () => {
