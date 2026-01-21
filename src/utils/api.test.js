@@ -15,6 +15,24 @@ import {
   saveFunctionalAreas,
   fetchLabels,
   saveLabels,
+  fetchCollections,
+  createCollection,
+  deleteCollection,
+  fetchProjects,
+  addProject,
+  hideProject,
+  unhideProject,
+  setActiveProject,
+  fetchProjectSettings,
+  saveProjectSettings,
+  fetchTestPlans,
+  fetchTestExecutions,
+  fetchTestSets,
+  fetchPreconditions,
+  fetchFolders,
+  linkTestToEntities,
+  updateTestLinks,
+  updateDraftXrayLinks,
 } from './api';
 
 describe('API utilities', () => {
@@ -282,6 +300,331 @@ describe('API utilities', () => {
         body: JSON.stringify({ labels }),
       });
       expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchCollections', () => {
+    it('should fetch collections successfully', async () => {
+      const mockResponse = { success: true, collections: [{ id: '1', name: 'Smoke' }] };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchCollections();
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/collections');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('createCollection', () => {
+    it('should create collection successfully', async () => {
+      const mockResponse = { success: true, id: 'new-id' };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await createCollection('Smoke', '#ff0000');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Smoke', color: '#ff0000' }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('deleteCollection', () => {
+    it('should delete collection successfully', async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await deleteCollection('123');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/collections/123', {
+        method: 'DELETE',
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchProjects', () => {
+    it('should fetch projects successfully', async () => {
+      const mockResponse = { success: true, projects: [{ key: 'WCP', color: '#3b82f6' }] };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchProjects();
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('addProject', () => {
+    it('should add project successfully', async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await addProject('NEW', '#22c55e');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectKey: 'NEW', color: '#22c55e' }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('hideProject', () => {
+    it('should hide project successfully', async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await hideProject('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects/WCP/hide', {
+        method: 'POST',
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('unhideProject', () => {
+    it('should unhide project successfully', async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await unhideProject('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects/WCP/unhide', {
+        method: 'POST',
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('setActiveProject', () => {
+    it('should set active project successfully', async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await setActiveProject('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects/WCP/activate', {
+        method: 'POST',
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchProjectSettings', () => {
+    it('should fetch project settings successfully', async () => {
+      const mockResponse = { success: true, settings: { testType: 'Manual' } };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchProjectSettings('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects/WCP');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('saveProjectSettings', () => {
+    it('should save project settings successfully', async () => {
+      const settings = { testType: 'Automated' };
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await saveProjectSettings('WCP', settings);
+
+      expect(fetch).toHaveBeenCalledWith('/api/settings/projects/WCP', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchTestPlans', () => {
+    it('should fetch test plans for a project', async () => {
+      const mockResponse = {
+        success: true,
+        testPlans: [{ issueId: '1', key: 'WCP-100', summary: 'Plan 1' }],
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchTestPlans('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/test-plans/WCP');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should throw error on failed response', async () => {
+      fetch.mockResolvedValueOnce(mockErrorResponse(500, 'Failed to fetch test plans'));
+
+      await expect(fetchTestPlans('WCP')).rejects.toThrow('Failed to fetch test plans');
+    });
+  });
+
+  describe('fetchTestExecutions', () => {
+    it('should fetch test executions for a project', async () => {
+      const mockResponse = {
+        success: true,
+        testExecutions: [{ issueId: '2', key: 'WCP-200', summary: 'Execution 1' }],
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchTestExecutions('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/test-executions/WCP');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchTestSets', () => {
+    it('should fetch test sets for a project', async () => {
+      const mockResponse = {
+        success: true,
+        testSets: [{ issueId: '3', key: 'WCP-300', summary: 'Set 1' }],
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchTestSets('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/test-sets/WCP');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchPreconditions', () => {
+    it('should fetch preconditions for a project', async () => {
+      const mockResponse = {
+        success: true,
+        preconditions: [{ issueId: '4', key: 'WCP-400', summary: 'Precondition 1' }],
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchPreconditions('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/preconditions/WCP');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('fetchFolders', () => {
+    it('should fetch folders for a project with default path', async () => {
+      const mockResponse = {
+        success: true,
+        folders: { path: '/', folders: ['/Smoke', '/Regression'] },
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchFolders('WCP');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/folders/WCP?path=%2F');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should fetch folders with custom path', async () => {
+      const mockResponse = {
+        success: true,
+        folders: { path: '/Smoke', folders: [] },
+      };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await fetchFolders('WCP', '/Smoke');
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/folders/WCP?path=%2FSmoke');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('linkTestToEntities', () => {
+    it('should link test to entities successfully', async () => {
+      const linkData = {
+        testIssueId: 'test-1',
+        projectKey: 'WCP',
+        testPlanIds: ['plan-1'],
+        testExecutionIds: [],
+        testSetIds: [],
+        folderPath: '/',
+        preconditionIds: [],
+      };
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await linkTestToEntities(linkData);
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(linkData),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should throw error on failed link', async () => {
+      fetch.mockResolvedValueOnce(mockErrorResponse(400, 'Invalid test issue ID'));
+
+      await expect(linkTestToEntities({})).rejects.toThrow('Invalid test issue ID');
+    });
+  });
+
+  describe('updateTestLinks', () => {
+    it('should update test links successfully', async () => {
+      const data = {
+        testIssueId: 'test-1',
+        projectKey: 'WCP',
+        testPlanIds: ['plan-1', 'plan-2'],
+        originalTestPlanIds: ['plan-1'],
+        testExecutionIds: [],
+        originalTestExecutionIds: ['exec-1'],
+      };
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await updateTestLinks(data);
+
+      expect(fetch).toHaveBeenCalledWith('/api/xray/update-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should throw error on failed update', async () => {
+      fetch.mockResolvedValueOnce(mockErrorResponse(500, 'Failed to update links'));
+
+      await expect(updateTestLinks({})).rejects.toThrow('Failed to update links');
+    });
+  });
+
+  describe('updateDraftXrayLinks', () => {
+    it('should update draft xray links successfully', async () => {
+      const xrayLinking = {
+        testPlanIds: ['plan-1'],
+        testExecutionIds: [],
+        testSetIds: [],
+        folderPath: '/Smoke',
+        preconditionIds: [],
+      };
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce(mockSuccessResponse(mockResponse));
+
+      const result = await updateDraftXrayLinks('draft-123', xrayLinking);
+
+      expect(fetch).toHaveBeenCalledWith('/api/drafts/draft-123/xray-links', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ xrayLinking }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should throw error when draft not found', async () => {
+      fetch.mockResolvedValueOnce(mockErrorResponse(404, 'Draft not found'));
+
+      await expect(updateDraftXrayLinks('invalid-id', {})).rejects.toThrow('Draft not found');
     });
   });
 });
