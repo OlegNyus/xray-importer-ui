@@ -9,7 +9,7 @@ describe('TagInput', () => {
   const defaultProps = {
     tags: [],
     onChange: vi.fn(),
-    placeholder: 'Add labels...',
+    placeholder: 'Search or create...',
     disabled: false,
   };
 
@@ -22,14 +22,14 @@ describe('TagInput', () => {
   it('should render placeholder when no tags', async () => {
     render(<TagInput {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Add labels...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Search or create...')).toBeInTheDocument();
     });
   });
 
   it('should not render placeholder when has tags', async () => {
     render(<TagInput {...defaultProps} tags={['ExistingTag']} />);
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Add labels...')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('Search or create...')).not.toBeInTheDocument();
     });
   });
 
@@ -62,7 +62,7 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} onChange={onChange} />);
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewTag' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -93,7 +93,7 @@ describe('TagInput', () => {
   it('should close dropdown on Escape', async () => {
     render(<TagInput {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'Lab' } });
 
@@ -117,7 +117,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'L' } });
 
@@ -134,7 +134,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'Label' } });
 
@@ -153,7 +153,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'Label1' } });
 
@@ -163,19 +163,21 @@ describe('TagInput', () => {
     });
   });
 
-  it('should show Add new option for new labels', async () => {
+  it('should show Create option for new labels', async () => {
     render(<TagInput {...defaultProps} />);
 
     await waitFor(() => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'NewLabel' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Add "NewLabel"')).toBeInTheDocument();
+      // The create option shows "Create" and the label name
+      const createOption = screen.getByText('NewLabel', { selector: '.font-medium' });
+      expect(createOption).toBeInTheDocument();
     });
   });
 
@@ -187,7 +189,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -208,7 +210,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'L' } });
 
@@ -255,7 +257,7 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 

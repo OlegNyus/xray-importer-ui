@@ -213,7 +213,7 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
             }}
             onFocus={() => setShowDropdown(true)}
             onKeyDown={handleKeyDown}
-            placeholder={tags.length === 0 ? placeholder : ''}
+            placeholder={tags.length === 0 ? 'Search or create...' : ''}
             className="flex-1 min-w-[120px] outline-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400"
             role="combobox"
             aria-expanded={showDropdown}
@@ -261,22 +261,30 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
           )}
 
           {showAddNew && (
-            <button
-              type="button"
+            <div
               data-option
               onClick={() => addTag(inputValue)}
               onMouseEnter={() => setHighlightedIndex(filteredLabels.length)}
-              className={`w-full px-3 py-2 text-left text-primary-600 dark:text-primary-400 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 ${
+              className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-t border-gray-100 dark:border-gray-700 text-primary-600 dark:text-primary-400 ${
                 highlightedIndex === filteredLabels.length
                   ? 'bg-primary-50 dark:bg-primary-900/30'
                   : 'hover:bg-primary-50 dark:hover:bg-primary-900/20'
               }`}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Add "{inputValue.trim()}"
-            </button>
+              <span className="flex-1">
+                Create "<span className="font-medium">{inputValue.trim()}</span>"
+              </span>
+            </div>
+          )}
+
+          {/* Hint to create when list is shown but nothing typed */}
+          {!inputValue && filteredLabels.length > 0 && (
+            <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
+              Type to create a new label
+            </div>
           )}
         </div>
       )}
