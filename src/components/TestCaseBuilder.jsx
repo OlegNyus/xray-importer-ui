@@ -350,9 +350,14 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
       return;
     }
 
+    // Check if the test case is imported (read-only view)
+    const testCase = savedTestCases.find((tc) => tc.id === id);
+    const isImported = testCase?.status === 'imported';
+
     setEditingId(id);
-    setActiveTab('create');
-  }, [hasUnsavedChanges]);
+    // Stay on 'imported' tab when viewing imported TCs, otherwise switch to 'create'
+    setActiveTab(isImported ? 'imported' : 'create');
+  }, [hasUnsavedChanges, savedTestCases]);
 
   const handleDelete = useCallback(async (id) => {
     try {
@@ -457,6 +462,9 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
     loadDrafts();
   }, [loadDrafts]);
 
+  // Check if viewing an imported TC
+  const viewingImportedTC = activeTab === 'imported' && editingId && getTestCaseToEdit()?.status === 'imported';
+
   // Dynamic header based on active tab
   const headerContent = useMemo(() => {
     switch (activeTab) {
@@ -471,6 +479,11 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
           subtitle: 'Review and manage your saved test case drafts',
         };
       case 'imported':
+        // When viewing a specific imported TC, don't show generic header
+        // The TestCasePreview component has its own header
+        if (editingId && getTestCaseToEdit()?.status === 'imported') {
+          return null;
+        }
         return {
           title: 'Imported',
           subtitle: 'View test cases that have been imported to Xray',
@@ -486,19 +499,41 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
           subtitle: 'Manage your test cases',
         };
     }
-  }, [activeTab, editingId]);
+  }, [activeTab, editingId, getTestCaseToEdit]);
+
+  // Handle back to list when viewing imported TC
+  const handleBackToList = useCallback(() => {
+    setEditingId(null);
+  }, []);
 
   return (
     <div className="card">
-      {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-          {headerContent.title}
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-          {headerContent.subtitle}
-        </p>
-      </div>
+      {/* Header - only show when not viewing an imported TC (it has its own header) */}
+      {headerContent && (
+        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            {headerContent.title}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            {headerContent.subtitle}
+          </p>
+        </div>
+      )}
+
+      {/* Back button when viewing imported TC */}
+      {viewingImportedTC && (
+        <div className="p-4 sm:px-6 sm:pt-4 sm:pb-0">
+          <button
+            onClick={handleBackToList}
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back to Imported
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -625,18 +660,38 @@ function TestCaseBuilder({ config, activeProject, onImportSuccess, onImportError
         )}
 
         {activeTab === 'imported' && !loading && !error && (
-          <SavedTestCases
-            testCases={savedTestCases}
-            filterStatus="imported"
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onImportSuccess={onImportSuccess}
-            onImportError={onImportError}
-            onRefresh={refreshDrafts}
-            showToast={showToast}
-            collections={collections}
-            config={config}
-          />
+          editingId && getTestCaseToEdit()?.status === 'imported' ? (
+            <TestCaseForm
+              config={config}
+              activeProject={activeProject}
+              editingTestCase={getTestCaseToEdit()}
+              editingId={editingId}
+              onSaveDraft={handleSaveDraft}
+              onImportSuccess={(result) => handleImportSuccess(result, editingId)}
+              onImportError={onImportError}
+              onCreateNew={handleCreateNew}
+              setHasUnsavedChanges={setHasUnsavedChanges}
+              showToast={showToast}
+              collections={collections}
+              onCreateCollection={handleCreateCollection}
+              xrayEntitiesCache={xrayEntitiesCache}
+              onLoadXrayEntities={loadXrayEntities}
+              onRefresh={refreshDrafts}
+            />
+          ) : (
+            <SavedTestCases
+              testCases={savedTestCases}
+              filterStatus="imported"
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onImportSuccess={onImportSuccess}
+              onImportError={onImportError}
+              onRefresh={refreshDrafts}
+              showToast={showToast}
+              collections={collections}
+              config={config}
+            />
+          )
         )}
 
         {activeTab === 'collections' && (
