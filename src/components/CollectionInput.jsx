@@ -237,7 +237,7 @@ function CollectionInput({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search collections..."
+              placeholder={onCreateCollection ? "Search or create..." : "Search collections..."}
               className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-400"
               autoFocus
             />
@@ -297,6 +297,13 @@ function CollectionInput({
               {inputValue ? 'No collections found' : 'No collections available'}
             </div>
           ) : null}
+
+          {/* Hint to create when list is shown but nothing typed */}
+          {onCreateCollection && !inputValue && filteredCollections.length > 0 && (
+            <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
+              Type to create a new collection
+            </div>
+          )}
         </div>
       )}
     </div>
