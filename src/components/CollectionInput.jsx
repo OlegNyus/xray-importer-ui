@@ -1,15 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 
+const PRESET_COLORS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
+  '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6b7280',
+];
+
 function CollectionInput({
   value,
   onChange,
   collections = [],
+  onCreateCollection,
   placeholder = 'Select collection...',
   disabled,
 }) {
   const [inputValue, setInputValue] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
@@ -70,6 +77,31 @@ function CollectionInput({
     col.name.toLowerCase().includes(inputValue.toLowerCase())
   );
 
+  // Check if we can create a new collection
+  const trimmedInput = inputValue.trim();
+  const exactMatch = collections.some(
+    (col) => col.name.toLowerCase() === trimmedInput.toLowerCase()
+  );
+  const canCreate = onCreateCollection && trimmedInput && !exactMatch;
+
+  // Create new collection
+  async function handleCreate() {
+    if (!canCreate || isCreating) return;
+    setIsCreating(true);
+    try {
+      const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+      const newCollection = await onCreateCollection(trimmedInput, randomColor);
+      if (newCollection?.id) {
+        onChange(newCollection.id);
+      }
+      closeDropdown();
+    } catch (error) {
+      console.error('Failed to create collection:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
   function handleKeyDown(e) {
     switch (e.key) {
       case 'Escape':
@@ -103,6 +135,8 @@ function CollectionInput({
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filteredCollections.length) {
           selectCollection(filteredCollections[highlightedIndex]);
+        } else if (canCreate) {
+          handleCreate();
         } else if (filteredCollections.length > 0) {
           selectCollection(filteredCollections[0]);
         }
@@ -209,6 +243,24 @@ function CollectionInput({
             />
           </div>
 
+          {/* Create new option */}
+          {canCreate && (
+            <div
+              onClick={handleCreate}
+              className="flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-primary-600 dark:text-primary-400"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span className="flex-1">
+                Create "<span className="font-medium">{trimmedInput}</span>"
+              </span>
+              {isCreating && (
+                <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary-600"></span>
+              )}
+            </div>
+          )}
+
           {filteredCollections.length > 0 ? (
             <div className="py-1">
               {filteredCollections.map((col, index) => (
@@ -240,11 +292,11 @@ function CollectionInput({
                 </div>
               ))}
             </div>
-          ) : (
+          ) : !canCreate ? (
             <div className="p-3 text-center text-gray-400 text-sm">
               {inputValue ? 'No collections found' : 'No collections available'}
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>
