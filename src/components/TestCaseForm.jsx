@@ -551,19 +551,11 @@ function TestCaseForm({
 
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          {editingId ? 'Edit Test Case' : 'Create Test Case'}
-          {getStatusBadge()}
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {editingId
-            ? 'Modify the test case and save or import'
-            : 'Fill in the details below and import to Xray Cloud'}
-        </p>
-        {/* Project indicator */}
+      {/* Status and project info bar */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {getStatusBadge()}
         {activeProject && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">Importing to:</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

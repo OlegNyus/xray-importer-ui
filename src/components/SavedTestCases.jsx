@@ -236,21 +236,8 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
 
   return (
     <div>
-      {/* Header with search/sort */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
-        {/* Only show header for drafts - imported view has page header */}
-        {!isImportedView && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Draft Test Cases
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Your locally saved test cases
-            </p>
-          </div>
-        )}
-
-        <div className={`flex flex-wrap items-center gap-2 ${isImportedView ? 'w-full' : ''}`}>
+      {/* Filters and search */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Collection Filter */}
           {collections.length > 0 && (
             <select
@@ -294,7 +281,6 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
             <option value="name">A-Z</option>
             {!isImportedView && <option value="status">Complete</option>}
           </select>
-        </div>
       </div>
 
       {/* Selection header - Select All checkbox */}

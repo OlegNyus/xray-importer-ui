@@ -80,14 +80,15 @@ describe('TestCaseForm', () => {
     api.importDraft.mockResolvedValue({ success: true, jobId: 'job-123' });
   });
 
-  it('should render Create Test Case title when not editing', () => {
+  it('should show New badge when creating new test case', () => {
     render(<TestCaseForm {...defaultProps} />);
-    expect(screen.getByText('Create Test Case')).toBeInTheDocument();
+    // Title is in page header, form shows status badge and project
+    expect(screen.getByText('New')).toBeInTheDocument();
   });
 
-  it('should render Edit Test Case title when editing', () => {
-    render(<TestCaseForm {...defaultProps} editingId="tc-1" editingTestCase={{ summary: 'Test', steps: [] }} />);
-    expect(screen.getByText('Edit Test Case')).toBeInTheDocument();
+  it('should show Draft badge when editing draft', () => {
+    render(<TestCaseForm {...defaultProps} editingId="tc-1" editingTestCase={{ summary: 'Test', steps: [], status: 'draft' }} />);
+    expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
   it('should render TestCasePreview when imported', () => {
