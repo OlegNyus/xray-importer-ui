@@ -121,7 +121,18 @@ Organize test cases into collections (e.g., Sprint 1, Smoke Tests).
 2. Go to "Drafts" tab
 3. Select complete drafts (Draft ✓)
 4. Click "Import Selected"
-5. Post-import modal: delete all or keep as "imported"
+5. Choose to delete or keep local copies
+
+### After Import
+The success screen shows:
+- **Test Key(s)** - Clickable links to open in Jira (e.g., WCP-9183)
+- **Project** - Target Jira project
+- **Status** - Import status
+- **Job ID** - Xray import job reference
+
+You can choose to:
+- **Keep Local Copy** - Mark as "imported" and keep in local storage
+- **Delete Local** - Remove from local storage (does not affect Jira)
 
 ## Test Case Status
 
@@ -137,10 +148,12 @@ Organize test cases into collections (e.g., Sprint 1, Smoke Tests).
 Imported test cases appear in the "Imported" tab.
 
 - **View** - Click to see preview with all details
-- **Jira Link** - Click test key badge (e.g., WCP-9172) to open in Jira
+- **Jira Link** - Click test key badge (e.g., WCP-9172) to open in Jira (opens in new tab)
 - **Edit Links** - Add/remove Test Plans, Executions, Sets, Preconditions
 - **Select** - Checkbox to select individual or all
 - **Delete** - Remove selected from local storage (does not delete from Jira)
+
+Note: Test key links open in a new browser tab for easy navigation.
 
 ### Edit Xray Links
 
