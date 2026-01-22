@@ -30,6 +30,21 @@ function SearchableMultiSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close dropdown on Escape key (document-level for when dropdown is open)
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    function handleEscapeKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDropdown();
+        setInputValue('');
+      }
+    }
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [showDropdown]);
+
   // Reset highlight when dropdown opens or options change
   useEffect(() => {
     if (showDropdown) {
