@@ -275,6 +275,7 @@ function XrayLinksEditor({
           xrayEntitiesCache={xrayEntitiesCache}
           onLoadXrayEntities={onLoadXrayEntities}
           hideHint
+          hideHeader
         />
       ) : (
         /* Read-only Mode - Display current links */

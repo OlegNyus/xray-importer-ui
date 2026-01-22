@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import SearchableMultiSelect from './SearchableMultiSelect';
 import FolderInput from './FolderInput';
 
-function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEntitiesCache, onLoadXrayEntities, hideHint }) {
+function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEntitiesCache, onLoadXrayEntities, hideHint, hideHeader }) {
   // Use cache if available, otherwise use local state
   const cache = xrayEntitiesCache || {
     testPlans: [],
@@ -64,14 +64,42 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Xray Linking
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Required for import
-          </span>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Xray Linking
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Required for import
+            </span>
+            <button
+              type="button"
+              onClick={handleLoadAll}
+              disabled={isLoadingAny}
+              className="px-3 py-1 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-lg disabled:opacity-50 flex items-center gap-1"
+            >
+              <svg
+                className={`w-3.5 h-3.5 ${isLoadingAny ? 'animate-spin' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              {isLoadingAny ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Refresh button when header is hidden */}
+      {hideHeader && (
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleLoadAll}
@@ -94,7 +122,7 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
             {isLoadingAny ? 'Loading...' : 'Refresh'}
           </button>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SearchableMultiSelect
