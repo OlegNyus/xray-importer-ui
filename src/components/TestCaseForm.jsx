@@ -672,7 +672,7 @@ function TestCaseForm({
             <TagInput
               tags={formData.labels}
               onChange={handleLabelsChange}
-              placeholder="Type and press Enter to add labels"
+              placeholder="Search or create..."
             />
           </div>
 
@@ -690,7 +690,7 @@ function TestCaseForm({
               }}
               collections={collections}
               onCreateCollection={onCreateCollection}
-              placeholder="Select collection..."
+              placeholder="Search or create..."
             />
           </div>
 

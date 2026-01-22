@@ -206,12 +206,12 @@ function CollectionInput({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={onCreateCollection ? "Search or create..." : "Search collections..."}
+            placeholder="Search or create..."
             className="flex-1 outline-none bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400"
             autoFocus
           />
         ) : (
-          <span className="text-gray-400 text-sm">{placeholder}</span>
+          <span className="text-gray-400 text-sm flex-1">{placeholder}</span>
         )}
         {/* Dropdown chevron */}
         <svg

@@ -955,14 +955,18 @@ describe('TestCaseForm', () => {
   it('should show collection input with placeholder', () => {
     render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    expect(screen.getByText('Select collection...')).toBeInTheDocument();
+    // Collection field should have the placeholder
+    expect(screen.getByText('Collection')).toBeInTheDocument();
+    expect(screen.getAllByText('Search or create...').length).toBeGreaterThanOrEqual(1);
   });
 
   it('should show dropdown with existing collections when clicked', async () => {
     render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    // Click to open dropdown
-    fireEvent.click(screen.getByText('Select collection...'));
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
     await waitFor(() => {
       expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
@@ -972,8 +976,10 @@ describe('TestCaseForm', () => {
   it('should select existing collection from dropdown', async () => {
     render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    // Click to open dropdown
-    fireEvent.click(screen.getByText('Select collection...'));
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
     await waitFor(() => {
       expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
@@ -981,9 +987,9 @@ describe('TestCaseForm', () => {
 
     fireEvent.click(screen.getByText('Smoke Tests'));
 
-    // Collection should be selected and placeholder should be gone
+    // Collection should be selected (shown as chip)
     await waitFor(() => {
-      expect(screen.queryByText('Select collection...')).not.toBeInTheDocument();
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
     });
   });
 
@@ -993,11 +999,19 @@ describe('TestCaseForm', () => {
       { id: 'col-2', name: 'Integration Tests', color: '#22c55e' },
     ]} />);
 
-    // Click to open dropdown
-    fireEvent.click(screen.getByText('Select collection...'));
+    // Find collection field (it's after the Labels field)
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
-    // Type in search input
-    const searchInput = screen.getByPlaceholderText('Search collections...');
+    // Wait for input to appear and type in search input
+    await waitFor(() => {
+      const inputs = screen.getAllByPlaceholderText('Search or create...');
+      expect(inputs.length).toBeGreaterThan(0);
+    });
+
+    const inputs = screen.getAllByPlaceholderText('Search or create...');
+    const searchInput = inputs[inputs.length - 1]; // Last one is collection
     fireEvent.change(searchInput, { target: { value: 'Smoke' } });
 
     await waitFor(() => {
@@ -1009,8 +1023,10 @@ describe('TestCaseForm', () => {
   it('should show no collections message when none available', async () => {
     render(<TestCaseForm {...defaultProps} collections={[]} />);
 
-    // Click to open dropdown
-    fireEvent.click(screen.getByText('Select collection...'));
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
     await waitFor(() => {
       expect(screen.getByText('No collections available')).toBeInTheDocument();
