@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchLabels, saveLabels } from '../utils/api';
 
-function TagInput({ tags, onChange, placeholder = 'Select labels...', disabled }) {
+function TagInput({ tags, onChange, placeholder = 'Search or create...', disabled }) {
   const [inputValue, setInputValue] = useState('');
   const [availableLabels, setAvailableLabels] = useState([]);
   const [isOpen, setIsOpen] = useState(false);

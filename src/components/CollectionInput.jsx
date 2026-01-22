@@ -10,7 +10,7 @@ function CollectionInput({
   onChange,
   collections = [],
   onCreateCollection,
-  placeholder = 'Select collection...',
+  placeholder = 'Search or create...',
   disabled,
 }) {
   const [inputValue, setInputValue] = useState('');

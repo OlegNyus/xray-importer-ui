@@ -9,7 +9,7 @@ describe('TagInput', () => {
   const defaultProps = {
     tags: [],
     onChange: vi.fn(),
-    placeholder: 'Select labels...',
+    placeholder: 'Search or create...',
     disabled: false,
   };
 
@@ -27,7 +27,7 @@ describe('TagInput', () => {
 
   it('should render placeholder when no tags and closed', async () => {
     render(<TagInput {...defaultProps} />);
-    expect(screen.getByText('Select labels...')).toBeInTheDocument();
+    expect(screen.getByText('Search or create...')).toBeInTheDocument();
   });
 
   it('should show search input when opened', async () => {
