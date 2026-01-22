@@ -13,6 +13,7 @@ function SuccessScreen({ result, config, onCreateAnother, onPostImportDelete, on
   const testKey = result?.testKey;
   const testKeys = result?.testKeys;
   const displayKeys = isBulkImport ? testKeys : (testKey ? [testKey] : []);
+  const jiraBaseUrl = config?.jiraBaseUrl || 'https://your-domain.atlassian.net';
 
   function handleDelete() {
     const ids = isBulkImport ? result.draftIds : result.draftId;
@@ -55,9 +56,24 @@ function SuccessScreen({ result, config, onCreateAnother, onPostImportDelete, on
             <span className="text-gray-500 dark:text-gray-400 text-sm">
               {isBulkImport ? 'Test Keys' : 'Test Key'}
             </span>
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">
-              {displayKeys.slice(0, 3).join(', ')}
-              {displayKeys.length > 3 && ` +${displayKeys.length - 3} more`}
+            <span className="font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 flex-wrap justify-end">
+              {displayKeys.slice(0, 3).map((key, index) => (
+                <span key={key} className="inline-flex items-center">
+                  <a
+                    href={`${jiraBaseUrl}/browse/${key}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline inline-flex items-center gap-0.5"
+                  >
+                    {key}
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="opacity-60">
+                      <path d="M9 6.5v3a.5.5 0 01-.5.5h-6a.5.5 0 01-.5-.5v-6a.5.5 0 01.5-.5h3M7 2h3v3M5.5 6.5L10 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </a>
+                  {index < Math.min(displayKeys.length, 3) - 1 && <span className="ml-0.5">,</span>}
+                </span>
+              ))}
+              {displayKeys.length > 3 && <span className="text-gray-500 ml-1">+{displayKeys.length - 3} more</span>}
             </span>
           </div>
         )}
