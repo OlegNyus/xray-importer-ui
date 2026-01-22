@@ -697,8 +697,7 @@ function TestCaseForm({
                 setHasChanges(true);
               }}
               collections={collections}
-              onCreateCollection={onCreateCollection}
-              placeholder="Type and press Enter to add collection"
+              placeholder="Select collection..."
             />
           </div>
 
