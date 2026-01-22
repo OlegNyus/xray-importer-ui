@@ -213,7 +213,7 @@ function CollectionInput({
             </span>
             <span className="flex-1" />
           </>
-        ) : (
+        ) : !showDropdown && (
           <span className="text-gray-400 text-sm">{placeholder}</span>
         )}
         {/* Dropdown chevron */}
