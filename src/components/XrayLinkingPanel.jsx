@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import SearchableMultiSelect from './SearchableMultiSelect';
 import FolderInput from './FolderInput';
 
-function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEntitiesCache, onLoadXrayEntities }) {
+function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEntitiesCache, onLoadXrayEntities, hideHint }) {
   // Use cache if available, otherwise use local state
   const cache = xrayEntitiesCache || {
     testPlans: [],
@@ -166,16 +166,18 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
         emptyMessage="Click Refresh to load preconditions"
       />
 
-      {/* Hint */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-          <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <span>
-          Select Test Plans, Executions, and Sets to link your test case to after import
-        </span>
-      </div>
+      {/* Hint - hidden when editing imported test case */}
+      {!hideHint && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span>
+            Select Test Plans, Executions, and Sets to link your test case to after import
+          </span>
+        </div>
+      )}
     </div>
   );
 }
