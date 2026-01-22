@@ -64,9 +64,11 @@ describe('SavedTestCases', () => {
     expect(screen.getByText('Draft Test Cases')).toBeInTheDocument();
   });
 
-  it('should render title for imported view', () => {
+  it('should not render internal title for imported view (uses page header)', () => {
     render(<SavedTestCases {...defaultProps} filterStatus="imported" />);
-    expect(screen.getByText('Imported Test Cases')).toBeInTheDocument();
+    // Imported view doesn't have internal title - relies on page header from parent
+    expect(screen.queryByText('Imported Test Cases')).not.toBeInTheDocument();
+    expect(screen.queryByText('Draft Test Cases')).not.toBeInTheDocument();
   });
 
   it('should show empty state when no test cases', () => {

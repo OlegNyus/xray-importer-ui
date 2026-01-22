@@ -42,8 +42,8 @@ describe('CollectionsView', () => {
     expect(screen.getByText('Sprint 1')).toBeInTheDocument();
     expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
 
-    // Check counts - Sprint 1 has 2 drafts (tc1, tc2), Uncategorized has 1 (tc3)
-    // Imported test cases should not be counted
+    // Check counts - Sprint 1 has 3 (tc1, tc2, tc4), Uncategorized has 1 (tc3)
+    // Both drafts and imported test cases are counted
     const counts = screen.getAllByText(/^[0-2]$/);
     expect(counts.length).toBeGreaterThan(0);
   });
@@ -153,13 +153,13 @@ describe('CollectionsView', () => {
     const onDeleteCollection = vi.fn();
     render(<CollectionsView {...defaultProps} showToast={showToast} onDeleteCollection={onDeleteCollection} />);
 
-    // Sprint 1 has 2 test cases
+    // Sprint 1 has 3 test cases (2 drafts + 1 imported)
     const sprint1Row = screen.getByText('Sprint 1').closest('div');
     const deleteButton = sprint1Row.querySelector('button[title="Delete collection"]');
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith('Move 2 test cases first to delete this collection');
+      expect(showToast).toHaveBeenCalledWith('Move 3 test cases first to delete this collection');
       expect(onDeleteCollection).not.toHaveBeenCalled();
     });
   });
@@ -210,13 +210,13 @@ describe('CollectionsView', () => {
     expect(onDelete).toHaveBeenCalledWith('tc1');
   });
 
-  it('should not count imported test cases', () => {
+  it('should count both draft and imported test cases', () => {
     render(<CollectionsView {...defaultProps} />);
 
-    // Sprint 1 should show 2, not 3 (tc4 is imported)
+    // Sprint 1 should show 3 (tc1, tc2 drafts + tc4 imported)
     fireEvent.click(screen.getByText('Sprint 1'));
 
-    // The header should show (2 test cases)
-    expect(screen.getByText('(2 test cases)')).toBeInTheDocument();
+    // The header should show (3 test cases)
+    expect(screen.getByText('(3 test cases)')).toBeInTheDocument();
   });
 });

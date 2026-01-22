@@ -23,13 +23,12 @@ function CollectionsView({
   const [isCreating, setIsCreating] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
-  // Get test cases for each collection
+  // Get test cases for each collection (include both drafts and imported)
   const collectionCounts = useMemo(() => {
     const counts = { uncategorized: 0 };
     collections.forEach(col => { counts[col.id] = 0; });
 
     testCases.forEach(tc => {
-      if (tc.status === 'imported') return; // Only count drafts
       if (tc.collectionId && counts[tc.collectionId] !== undefined) {
         counts[tc.collectionId]++;
       } else {
@@ -40,12 +39,11 @@ function CollectionsView({
     return counts;
   }, [collections, testCases]);
 
-  // Get test cases for selected collection
+  // Get test cases for selected collection (include both drafts and imported)
   const selectedTestCases = useMemo(() => {
     if (selectedCollection === null) return [];
 
     return testCases.filter(tc => {
-      if (tc.status === 'imported') return false;
       if (selectedCollection === 'uncategorized') {
         return !tc.collectionId;
       }

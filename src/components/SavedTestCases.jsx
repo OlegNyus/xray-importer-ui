@@ -238,19 +238,19 @@ function SavedTestCases({ testCases, filterStatus, onEdit, onDelete, onImportSuc
     <div>
       {/* Header with search/sort */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {isImportedView ? 'Imported Test Cases' : 'Draft Test Cases'}
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {isImportedView
-              ? 'Test cases that have been imported to Xray'
-              : 'Your locally saved test cases'
-            }
-          </p>
-        </div>
+        {/* Only show header for drafts - imported view has page header */}
+        {!isImportedView && (
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Draft Test Cases
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Your locally saved test cases
+            </p>
+          </div>
+        )}
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={`flex flex-wrap items-center gap-2 ${isImportedView ? 'w-full' : ''}`}>
           {/* Collection Filter */}
           {collections.length > 0 && (
             <select
