@@ -14,7 +14,7 @@ function CollectionInput({
   disabled,
 }) {
   const [inputValue, setInputValue] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef(null);
@@ -35,26 +35,12 @@ function CollectionInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close dropdown on Escape key (document-level)
-  useEffect(() => {
-    if (!showDropdown) return;
-
-    function handleEscapeKey(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeDropdown();
-      }
-    }
-    document.addEventListener('keydown', handleEscapeKey);
-    return () => document.removeEventListener('keydown', handleEscapeKey);
-  }, [showDropdown]);
-
   // Reset highlight when dropdown opens or options change
   useEffect(() => {
-    if (showDropdown) {
+    if (isOpen) {
       setHighlightedIndex(-1);
     }
-  }, [showDropdown, inputValue]);
+  }, [isOpen, inputValue]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -67,7 +53,7 @@ function CollectionInput({
   }, [highlightedIndex]);
 
   function closeDropdown() {
-    setShowDropdown(false);
+    setIsOpen(false);
     setInputValue('');
     setHighlightedIndex(-1);
   }
@@ -115,8 +101,8 @@ function CollectionInput({
 
       case 'ArrowDown':
         e.preventDefault();
-        if (!showDropdown) {
-          setShowDropdown(true);
+        if (!isOpen) {
+          setIsOpen(true);
         } else {
           setHighlightedIndex((prev) =>
             prev < filteredCollections.length - 1 ? prev + 1 : prev
@@ -126,7 +112,7 @@ function CollectionInput({
 
       case 'ArrowUp':
         e.preventDefault();
-        if (showDropdown) {
+        if (isOpen) {
           setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
         }
         break;
@@ -149,14 +135,14 @@ function CollectionInput({
         break;
 
       case 'Home':
-        if (showDropdown && filteredCollections.length > 0) {
+        if (isOpen && filteredCollections.length > 0) {
           e.preventDefault();
           setHighlightedIndex(0);
         }
         break;
 
       case 'End':
-        if (showDropdown && filteredCollections.length > 0) {
+        if (isOpen && filteredCollections.length > 0) {
           e.preventDefault();
           setHighlightedIndex(filteredCollections.length - 1);
         }
@@ -177,20 +163,20 @@ function CollectionInput({
 
   function openDropdown() {
     if (disabled) return;
-    setShowDropdown(true);
-    // Focus input after dropdown opens
+    setIsOpen(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   return (
     <div className="relative" ref={containerRef}>
+      {/* Main input field */}
       <div
         className={`input min-h-[42px] h-auto flex items-center gap-2 p-2 ${
-          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-        }`}
+          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-text'
+        } ${isOpen ? 'ring-2 ring-primary-500 border-transparent' : ''}`}
         onClick={openDropdown}
       >
-        {selectedCollection ? (
+        {selectedCollection && !isOpen ? (
           <>
             <span className="inline-flex items-center gap-1.5 px-2 py-1 text-sm rounded-md bg-gray-100 dark:bg-gray-700">
               <span
@@ -213,39 +199,43 @@ function CollectionInput({
             </span>
             <span className="flex-1" />
           </>
-        ) : !showDropdown && (
+        ) : isOpen ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={onCreateCollection ? "Search or create..." : "Search collections..."}
+            className="flex-1 outline-none bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400"
+            autoFocus
+          />
+        ) : (
           <span className="text-gray-400 text-sm">{placeholder}</span>
         )}
         {/* Dropdown chevron */}
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-400 flex-shrink-0">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          className={`text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>
 
       {/* Dropdown */}
-      {showDropdown && (
+      {isOpen && (
         <div
           ref={listRef}
           className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
           role="listbox"
         >
-          {/* Search input inside dropdown */}
-          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={onCreateCollection ? "Search or create..." : "Search collections..."}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-400"
-              autoFocus
-            />
-          </div>
-
           {/* Create new option */}
           {canCreate && (
             <div
+              data-option
               onClick={handleCreate}
               className="flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-primary-600 dark:text-primary-400"
             >
