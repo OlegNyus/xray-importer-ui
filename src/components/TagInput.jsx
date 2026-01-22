@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchLabels, saveLabels } from '../utils/api';
 
-function TagInput({ tags, onChange, placeholder, disabled }) {
+function TagInput({ tags, onChange, placeholder = 'Select labels...', disabled }) {
   const [inputValue, setInputValue] = useState('');
   const [availableLabels, setAvailableLabels] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -38,10 +38,10 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
 
   // Reset highlight when dropdown opens or options change
   useEffect(() => {
-    if (showDropdown) {
+    if (isOpen) {
       setHighlightedIndex(-1);
     }
-  }, [showDropdown, inputValue]);
+  }, [isOpen, inputValue]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -54,8 +54,15 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
   }, [highlightedIndex]);
 
   function closeDropdown() {
-    setShowDropdown(false);
+    setIsOpen(false);
+    setInputValue('');
     setHighlightedIndex(-1);
+  }
+
+  function openDropdown() {
+    if (disabled) return;
+    setIsOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   // Filter labels based on input
@@ -65,9 +72,10 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
       label.toLowerCase().includes(inputValue.toLowerCase())
   );
 
-  // Check if we should show "Add new" option
-  const showAddNew = inputValue.trim() && !availableLabels.includes(inputValue.trim());
-  const totalOptions = filteredLabels.length + (showAddNew ? 1 : 0);
+  // Check if we should show "Create" option
+  const trimmedInput = inputValue.trim();
+  const canCreate = trimmedInput && !availableLabels.includes(trimmedInput);
+  const totalOptions = filteredLabels.length + (canCreate ? 1 : 0);
 
   function handleKeyDown(e) {
     switch (e.key) {
@@ -82,8 +90,8 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
 
       case 'ArrowDown':
         e.preventDefault();
-        if (!showDropdown) {
-          setShowDropdown(true);
+        if (!isOpen) {
+          setIsOpen(true);
         } else {
           setHighlightedIndex((prev) =>
             prev < totalOptions - 1 ? prev + 1 : prev
@@ -93,7 +101,7 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
 
       case 'ArrowUp':
         e.preventDefault();
-        if (showDropdown) {
+        if (isOpen) {
           setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
         }
         break;
@@ -102,10 +110,12 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filteredLabels.length) {
           selectLabel(filteredLabels[highlightedIndex]);
-        } else if (highlightedIndex === filteredLabels.length && showAddNew) {
+        } else if (highlightedIndex === filteredLabels.length && canCreate) {
           addTag(inputValue);
-        } else {
+        } else if (trimmedInput) {
           addTag(inputValue);
+        } else if (filteredLabels.length > 0) {
+          selectLabel(filteredLabels[0]);
         }
         break;
 
@@ -116,14 +126,14 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
         break;
 
       case 'Home':
-        if (showDropdown && totalOptions > 0) {
+        if (isOpen && totalOptions > 0) {
           e.preventDefault();
           setHighlightedIndex(0);
         }
         break;
 
       case 'End':
-        if (showDropdown && totalOptions > 0) {
+        if (isOpen && totalOptions > 0) {
           e.preventDefault();
           setHighlightedIndex(totalOptions - 1);
         }
@@ -145,7 +155,8 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
       }
     }
     setInputValue('');
-    closeDropdown();
+    // Keep dropdown open for adding more labels
+    inputRef.current?.focus();
   }
 
   function selectLabel(label) {
@@ -153,11 +164,12 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
       onChange([...tags, label]);
     }
     setInputValue('');
-    closeDropdown();
+    // Keep dropdown open for adding more labels
     inputRef.current?.focus();
   }
 
-  function removeTag(index) {
+  function removeTag(index, e) {
+    e.stopPropagation();
     onChange(tags.filter((_, i) => i !== index));
   }
 
@@ -174,61 +186,98 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
 
   return (
     <div className="relative" ref={containerRef}>
+      {/* Main input field */}
       <div
-        className={`input min-h-[42px] h-auto flex flex-wrap gap-2 p-2 ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-text'}`}
-        onClick={() => {
-          if (disabled) return;
-          inputRef.current?.focus();
-          setShowDropdown(true);
-        }}
+        className={`input min-h-[42px] h-auto flex items-center gap-2 p-2 ${
+          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-text'
+        } ${isOpen ? 'ring-2 ring-primary-500 border-transparent' : ''}`}
+        onClick={openDropdown}
       >
-        {tags.map((tag, index) => (
-          <span key={index} className="tag">
-            {tag}
-            {!disabled && (
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeTag(index);
-                }}
-                className="ml-1 text-primary-500 hover:text-primary-700"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-            )}
-          </span>
-        ))}
-        {!disabled && (
+        {/* Selected tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag, index) => (
+              <span key={index} className="tag">
+                {tag}
+                {!disabled && (
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={(e) => removeTag(index, e)}
+                    className="ml-1 text-primary-500 hover:text-primary-700"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Input or placeholder */}
+        {isOpen ? (
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              setShowDropdown(true);
-            }}
-            onFocus={() => setShowDropdown(true)}
+            onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={tags.length === 0 ? 'Search or create...' : ''}
-            className="flex-1 min-w-[120px] outline-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400"
+            placeholder="Search or create..."
+            className="flex-1 min-w-[120px] outline-none bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400"
             role="combobox"
-            aria-expanded={showDropdown}
+            aria-expanded={isOpen}
             aria-haspopup="listbox"
+            autoFocus
           />
+        ) : tags.length === 0 ? (
+          <span className="text-gray-400 text-sm flex-1">{placeholder}</span>
+        ) : (
+          <span className="flex-1" />
         )}
+
+        {/* Dropdown chevron */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          className={`text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </div>
 
-      {showDropdown && (filteredLabels.length > 0 || inputValue.trim()) && (
+      {/* Dropdown */}
+      {isOpen && (
         <div
           ref={listRef}
           className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
           role="listbox"
         >
-          {filteredLabels.length > 0 && (
+          {/* Create new option */}
+          {canCreate && (
+            <div
+              data-option
+              onClick={() => addTag(inputValue)}
+              onMouseEnter={() => setHighlightedIndex(filteredLabels.length)}
+              className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-700 text-primary-600 dark:text-primary-400 ${
+                highlightedIndex === filteredLabels.length
+                  ? 'bg-primary-50 dark:bg-primary-900/30'
+                  : 'hover:bg-primary-50 dark:hover:bg-primary-900/20'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span className="flex-1">
+                Create "<span className="font-medium">{trimmedInput}</span>"
+              </span>
+            </div>
+          )}
+
+          {filteredLabels.length > 0 ? (
             <div className="py-1">
               {filteredLabels.map((label, index) => (
                 <div
@@ -258,27 +307,11 @@ function TagInput({ tags, onChange, placeholder, disabled }) {
                 </div>
               ))}
             </div>
-          )}
-
-          {showAddNew && (
-            <div
-              data-option
-              onClick={() => addTag(inputValue)}
-              onMouseEnter={() => setHighlightedIndex(filteredLabels.length)}
-              className={`flex items-center gap-2 px-3 py-2 cursor-pointer border-t border-gray-100 dark:border-gray-700 text-primary-600 dark:text-primary-400 ${
-                highlightedIndex === filteredLabels.length
-                  ? 'bg-primary-50 dark:bg-primary-900/30'
-                  : 'hover:bg-primary-50 dark:hover:bg-primary-900/20'
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <span className="flex-1">
-                Create "<span className="font-medium">{inputValue.trim()}</span>"
-              </span>
+          ) : !canCreate ? (
+            <div className="p-3 text-center text-gray-400 text-sm">
+              {inputValue ? 'No labels found' : 'No labels available'}
             </div>
-          )}
+          ) : null}
 
           {/* Hint to create when list is shown but nothing typed */}
           {!inputValue && filteredLabels.length > 0 && (
