@@ -2,38 +2,73 @@ import { useState, useEffect } from 'react';
 import XrayLinkingPanel from './XrayLinkingPanel';
 import { updateTestLinks, updateDraftXrayLinks } from '../utils/api';
 
-function LinkDisplayItem({ label, displays, jiraBaseUrl }) {
-  if (!displays || displays.length === 0) {
-    return (
-      <div>
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-        <p className="text-sm text-gray-400 dark:text-gray-500 italic mt-1">None selected</p>
-      </div>
-    );
-  }
+// Icons for different link types
+const LinkIcons = {
+  testPlans: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="2" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M5 7h4M7 5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  testExecutions: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
+  testSets: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="4" width="7" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M5 2h5a2 2 0 012 2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  preconditions: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 2v4M7 10v2M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
+  folder: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M2 4v7a1 1 0 001 1h8a1 1 0 001-1V5a1 1 0 00-1-1H7L5.5 2.5A1 1 0 004.8 2H3a1 1 0 00-1 1v1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  ),
+};
+
+function LinkDisplayItem({ label, displays, jiraBaseUrl, icon }) {
+  const isEmpty = !displays || displays.length === 0;
 
   return (
-    <div>
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-      <div className="flex flex-wrap gap-1.5 mt-1">
-        {displays.map((item) => {
-          const key = item.display?.split(':')[0] || item.id;
-          return (
-            <a
-              key={item.id}
-              href={`${jiraBaseUrl}/browse/${key}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {item.display || key}
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-50">
-                <path d="M3 7L7 3M7 3H4M7 3V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
-          );
-        })}
+    <div className="flex items-start gap-2">
+      <div className="mt-0.5 text-gray-400 dark:text-gray-500">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
+        {isEmpty ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic">—</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {displays.map((item) => {
+              const key = item.display?.split(':')[0] || item.id;
+              return (
+                <a
+                  key={item.id}
+                  href={`${jiraBaseUrl}/browse/${key}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md text-xs border border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors shadow-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {item.display || key}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-40">
+                    <path d="M3 7L7 3M7 3H4M7 3V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -279,36 +314,49 @@ function XrayLinksEditor({
         />
       ) : (
         /* Read-only Mode - Display current links */
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <LinkDisplayItem
               label="Test Plans"
               displays={xrayLinking.testPlanDisplays}
               jiraBaseUrl={jiraBaseUrl}
+              icon={LinkIcons.testPlans}
             />
             <LinkDisplayItem
               label="Test Executions"
               displays={xrayLinking.testExecutionDisplays}
               jiraBaseUrl={jiraBaseUrl}
+              icon={LinkIcons.testExecutions}
             />
             <LinkDisplayItem
               label="Test Sets"
               displays={xrayLinking.testSetDisplays}
               jiraBaseUrl={jiraBaseUrl}
+              icon={LinkIcons.testSets}
             />
-            <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Folder</span>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 font-mono">
-                {xrayLinking.folderPath || '/'}
-              </p>
+            {/* Folder */}
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 text-gray-400 dark:text-gray-500">
+                {LinkIcons.folder}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Folder</span>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1 font-mono bg-white dark:bg-gray-700 px-2 py-1 rounded-md border border-gray-200 dark:border-gray-600 inline-block">
+                  {xrayLinking.folderPath || '/'}
+                </p>
+              </div>
             </div>
           </div>
 
-          <LinkDisplayItem
-            label="Preconditions"
-            displays={xrayLinking.preconditionDisplays}
-            jiraBaseUrl={jiraBaseUrl}
-          />
+          {/* Preconditions - full width */}
+          <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+            <LinkDisplayItem
+              label="Preconditions"
+              displays={xrayLinking.preconditionDisplays}
+              jiraBaseUrl={jiraBaseUrl}
+              icon={LinkIcons.preconditions}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -92,7 +92,7 @@ describe('XrayLinksEditor', () => {
     expect(screen.getByText('/Tests')).toBeInTheDocument();
   });
 
-  it('should show "None selected" for empty displays', () => {
+  it('should show dash for empty displays', () => {
     const props = {
       ...defaultProps,
       testCase: {
@@ -104,7 +104,8 @@ describe('XrayLinksEditor', () => {
       },
     };
     render(<XrayLinksEditor {...props} />);
-    expect(screen.getByText('None selected')).toBeInTheDocument();
+    // Empty fields show em dash
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 
   it('should render links as clickable Jira links', () => {
@@ -297,7 +298,8 @@ describe('XrayLinksEditor', () => {
     };
     render(<XrayLinksEditor {...props} />);
     expect(screen.getByText('Xray Links')).toBeInTheDocument();
-    expect(screen.getAllByText('None selected').length).toBeGreaterThan(0);
+    // Empty fields show em dash
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   it('should not call onLoadXrayEntities if not provided', () => {
