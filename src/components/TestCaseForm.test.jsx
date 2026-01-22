@@ -951,64 +951,64 @@ describe('TestCaseForm', () => {
     expect(screen.getByText('newTag')).toBeInTheDocument();
   });
 
-  it('should show collection selector with New button', () => {
-    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests' }]} onCreateCollection={vi.fn()} />);
+  it('should show collection input with placeholder', () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} onCreateCollection={vi.fn()} />);
 
-    expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '+ New' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Type and press Enter to add collection')).toBeInTheDocument();
   });
 
-  it('should show new collection form when clicking + New', () => {
-    render(<TestCaseForm {...defaultProps} onCreateCollection={vi.fn()} />);
+  it('should show dropdown with existing collections when typing', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} onCreateCollection={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-
-    expect(screen.getByPlaceholderText('Collection name...')).toBeInTheDocument();
-  });
-
-  it('should cancel new collection form', () => {
-    render(<TestCaseForm {...defaultProps} onCreateCollection={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.click(screen.getByText('Cancel'));
-
-    expect(screen.queryByPlaceholderText('Collection name...')).not.toBeInTheDocument();
-  });
-
-  it('should create new collection', async () => {
-    const onCreateCollection = vi.fn().mockResolvedValue({ id: 'new-col', name: 'Test Collection' });
-    render(<TestCaseForm {...defaultProps} onCreateCollection={onCreateCollection} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.change(screen.getByPlaceholderText('Collection name...'), {
-      target: { value: 'Test Collection' },
-    });
-    fireEvent.click(screen.getByText('Create'));
+    const input = screen.getByPlaceholderText('Type and press Enter to add collection');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Smoke' } });
 
     await waitFor(() => {
-      expect(onCreateCollection).toHaveBeenCalledWith('Test Collection', expect.any(String));
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
     });
   });
 
-  it('should show error for duplicate collection name', async () => {
-    const showToast = vi.fn();
-    render(
-      <TestCaseForm
-        {...defaultProps}
-        showToast={showToast}
-        collections={[{ id: 'col-1', name: 'Existing' }]}
-        onCreateCollection={vi.fn()}
-      />
-    );
+  it('should select existing collection from dropdown', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} onCreateCollection={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.change(screen.getByPlaceholderText('Collection name...'), {
-      target: { value: 'Existing' },
-    });
-    fireEvent.click(screen.getByText('Create'));
+    const input = screen.getByPlaceholderText('Type and press Enter to add collection');
+    fireEvent.focus(input);
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith('Collection with this name already exists');
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Smoke Tests'));
+
+    // Collection should be selected and shown as a tag
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Type and press Enter to add collection')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show add option for new collection name', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[]} onCreateCollection={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText('Type and press Enter to add collection');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'New Collection' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Add "New Collection"')).toBeInTheDocument();
+    });
+  });
+
+  it('should show color picker when creating new collection', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[]} onCreateCollection={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText('Type and press Enter to add collection');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'New Collection' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pick a color for/)).toBeInTheDocument();
     });
   });
 });

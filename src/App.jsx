@@ -368,7 +368,7 @@ function App() {
       </main>
 
       <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700">
-        RayDrop &bull; v2.1.0
+        RayDrop &bull; v3.0.0
       </footer>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

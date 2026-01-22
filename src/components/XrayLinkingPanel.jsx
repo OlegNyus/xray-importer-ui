@@ -1,137 +1,6 @@
 import { useEffect, useCallback } from 'react';
-
-function MultiSelectField({ label, values, onChange, options, loading, error, required, placeholder, savedDisplays }) {
-  // Check if a value is selected (handles both issueId and key formats for backwards compatibility)
-  const isSelected = (opt) => {
-    // Direct match on issueId
-    if (values.includes(opt.issueId)) return true;
-    // Also check if any value matches the key (for legacy data that stored keys instead of issueIds)
-    if (opt.key && values.includes(opt.key)) return true;
-    return false;
-  };
-
-  // Use Xray internal issueId for GraphQL mutations
-  const toggleOption = (opt) => {
-    const displayText = `${opt.key}: ${opt.summary}`;
-    const currentlySelected = isSelected(opt);
-
-    if (currentlySelected) {
-      // Remove - filter out both issueId and key (in case of legacy data)
-      onChange(
-        values.filter((v) => v !== opt.issueId && v !== opt.key),
-        (savedDisplays || []).filter((d) => d.id !== opt.issueId && d.id !== opt.key)
-      );
-    } else {
-      // Add - always use issueId for new selections
-      onChange(
-        [...values, opt.issueId],
-        [...(savedDisplays || []), { id: opt.issueId, display: displayText }]
-      );
-    }
-  };
-
-  // Merge saved displays with loaded options
-  const allItems = options.length > 0 ? options : (savedDisplays || []).map(d => ({
-    issueId: d.id,
-    key: d.display.split(':')[0],
-    summary: d.display.split(': ').slice(1).join(': '),
-  }));
-
-  const selectedCount = values.length;
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-        {selectedCount > 0 && (
-          <span className="ml-2 text-xs text-primary-600 dark:text-primary-400">
-            ({selectedCount} selected)
-          </span>
-        )}
-      </label>
-      <div className={`border rounded-lg p-2 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}>
-        {loading ? (
-          <div className="flex items-center gap-2 text-gray-400 text-sm p-2">
-            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></span>
-            Loading...
-          </div>
-        ) : allItems.length === 0 ? (
-          <p className="text-gray-400 text-sm p-2">{placeholder || 'No items available'}</p>
-        ) : (
-          allItems.map((opt) => (
-            <label
-              key={opt.issueId}
-              className="flex items-center gap-2 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={isSelected(opt)}
-                onChange={() => toggleOption(opt)}
-                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                {opt.key}: {opt.summary}
-              </span>
-            </label>
-          ))
-        )}
-      </div>
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-    </div>
-  );
-}
-
-function FolderSelect({ value, onChange, folders, loading, error, required }) {
-  // Flatten folder tree into a list of paths
-  const flattenFolders = (folder, list = []) => {
-    if (!folder) return list;
-    if (folder.path) {
-      list.push(folder.path);
-    }
-    if (folder.folders && Array.isArray(folder.folders)) {
-      folder.folders.forEach((sub) => flattenFolders(sub, list));
-    }
-    return list;
-  };
-
-  const folderPaths = flattenFolders(folders);
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Folder {required && <span className="text-red-500">*</span>}
-      </label>
-      {folderPaths.length > 0 ? (
-        <select
-          value={value || '/'}
-          onChange={(e) => onChange(e.target.value)}
-          className={`input ${error ? 'input-error' : ''}`}
-          disabled={loading}
-        >
-          <option value="/">/ (Root)</option>
-          {folderPaths.map((path) => (
-            <option key={path} value={path}>
-              {path}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type="text"
-          value={value || '/'}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="/path/to/folder"
-          className={`input ${error ? 'input-error' : ''}`}
-          disabled={loading}
-        />
-      )}
-      <p className="text-gray-400 text-xs mt-1">
-        {folderPaths.length > 0 ? 'Select folder from dropdown' : 'Click "Refresh" to load folders'}
-      </p>
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-    </div>
-  );
-}
+import SearchableMultiSelect from './SearchableMultiSelect';
+import FolderInput from './FolderInput';
 
 function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEntitiesCache, onLoadXrayEntities }) {
   // Use cache if available, otherwise use local state
@@ -182,14 +51,6 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
   const isLoadingAny = cache.loading.testPlans || cache.loading.testExecutions ||
     cache.loading.testSets || cache.loading.preconditions || cache.loading.folders;
 
-  const handleChange = (field, fieldValue, displayField, displayValue) => {
-    const updates = { ...value, [field]: fieldValue };
-    if (displayField) {
-      updates[displayField] = displayValue;
-    }
-    onChange(updates);
-  };
-
   const isRequiredMissing = (field) => {
     if (!showValidation) return false;
     if (field === 'preconditionIds') return false; // Optional
@@ -236,7 +97,7 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MultiSelectField
+        <SearchableMultiSelect
           label="Test Plans"
           values={value.testPlanIds || []}
           savedDisplays={value.testPlanDisplays || []}
@@ -247,10 +108,11 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
           loading={cache.loading.testPlans}
           error={isRequiredMissing('testPlanIds') ? 'At least one required' : cache.errors.testPlans}
           required
-          placeholder="Click Refresh to load options"
+          placeholder="Type to search test plans..."
+          emptyMessage="Click Refresh to load test plans"
         />
 
-        <MultiSelectField
+        <SearchableMultiSelect
           label="Test Executions"
           values={value.testExecutionIds || []}
           savedDisplays={value.testExecutionDisplays || []}
@@ -261,10 +123,11 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
           loading={cache.loading.testExecutions}
           error={isRequiredMissing('testExecutionIds') ? 'At least one required' : cache.errors.testExecutions}
           required
-          placeholder="Click Refresh to load options"
+          placeholder="Type to search test executions..."
+          emptyMessage="Click Refresh to load test executions"
         />
 
-        <MultiSelectField
+        <SearchableMultiSelect
           label="Test Sets"
           values={value.testSetIds || []}
           savedDisplays={value.testSetDisplays || []}
@@ -273,14 +136,15 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
           }}
           options={cache.testSets}
           loading={cache.loading.testSets}
-          error={isRequiredMissing('testSetIds') ? 'At least one required' : cache.errors.testSets}
+          error={isRequiredMissing('testSetIds') ? 'At least one required' : cache.errors.testSetIds}
           required
-          placeholder="Click Refresh to load options"
+          placeholder="Type to search test sets..."
+          emptyMessage="Click Refresh to load test sets"
         />
 
-        <FolderSelect
+        <FolderInput
           value={value.folderPath}
-          onChange={(v) => handleChange('folderPath', v)}
+          onChange={(v) => onChange({ ...value, folderPath: v })}
           folders={cache.folders}
           loading={cache.loading.folders}
           error={isRequiredMissing('folderPath') ? 'Required' : cache.errors.folders}
@@ -288,7 +152,7 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
         />
       </div>
 
-      <MultiSelectField
+      <SearchableMultiSelect
         label="Preconditions"
         values={value.preconditionIds || []}
         savedDisplays={value.preconditionDisplays || []}
@@ -298,8 +162,20 @@ function XrayLinkingPanel({ projectKey, value, onChange, showValidation, xrayEnt
         options={cache.preconditions}
         loading={cache.loading.preconditions}
         error={cache.errors.preconditions}
-        placeholder="Click Refresh to load options"
+        placeholder="Type to search preconditions..."
+        emptyMessage="Click Refresh to load preconditions"
       />
+
+      {/* Hint */}
+      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <span>
+          Select Test Plans, Executions, and Sets to link your test case to after import
+        </span>
+      </div>
     </div>
   );
 }

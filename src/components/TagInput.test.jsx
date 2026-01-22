@@ -73,7 +73,7 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} tags={['ExistingTag']} onChange={onChange} />);
 
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'ExistingTag' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -84,7 +84,7 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} tags={['Tag1', 'Tag2']} onChange={onChange} />);
 
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('combobox');
     fireEvent.keyDown(input, { key: 'Backspace' });
 
     expect(onChange).toHaveBeenCalledWith(['Tag1']);

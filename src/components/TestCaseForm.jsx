@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import SortableStepCard from './SortableStepCard';
 import TagInput from './TagInput';
+import CollectionInput from './CollectionInput';
 import SummaryInput from './SummaryInput';
 import Modal from './Modal';
 import XrayLinkingPanel from './XrayLinkingPanel';
@@ -23,11 +24,6 @@ import TestCasePreview from './TestCasePreview';
 import { createDraft, updateDraft, importDraft, linkTestToEntities } from '../utils/api';
 
 const emptyStep = { action: '', data: '', result: '' };
-
-const PRESET_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
-  '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6b7280',
-];
 
 function TestCaseForm({
   config,
@@ -74,12 +70,6 @@ function TestCaseForm({
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showXrayValidation, setShowXrayValidation] = useState(false);
-
-  // New collection form state
-  const [showNewCollectionForm, setShowNewCollectionForm] = useState(false);
-  const [newCollectionName, setNewCollectionName] = useState('');
-  const [newCollectionColor, setNewCollectionColor] = useState(PRESET_COLORS[0]);
-  const [creatingCollection, setCreatingCollection] = useState(false);
 
   // Check if TC is imported (read-only)
   const isReadOnly = editingTestCase?.status === 'imported';
@@ -699,105 +689,17 @@ function TestCaseForm({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Collection
             </label>
-            {!showNewCollectionForm ? (
-              <div className="flex gap-2">
-                <select
-                  name="collectionId"
-                  value={formData.collectionId}
-                  onChange={handleChange}
-                  className="select flex-1"
-                >
-                  <option value="">No collection</option>
-                  {collections.map((col) => (
-                    <option key={col.id} value={col.id}>
-                      {col.name}
-                    </option>
-                  ))}
-                </select>
-                {onCreateCollection && (
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCollectionForm(true)}
-                    className="btn btn-secondary btn-sm whitespace-nowrap"
-                  >
-                    + New
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newCollectionName}
-                    onChange={(e) => setNewCollectionName(e.target.value)}
-                    placeholder="Collection name..."
-                    className="input flex-1 text-sm"
-                    maxLength={30}
-                    autoFocus
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {PRESET_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setNewCollectionColor(color)}
-                      className={`w-5 h-5 rounded-full transition-all ${
-                        newCollectionColor === color
-                          ? 'ring-2 ring-offset-1 ring-primary-500 dark:ring-offset-gray-800 scale-110'
-                          : 'hover:scale-110'
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewCollectionForm(false);
-                      setNewCollectionName('');
-                      setNewCollectionColor(PRESET_COLORS[0]);
-                    }}
-                    className="btn btn-ghost btn-sm flex-1"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!newCollectionName.trim() || creatingCollection}
-                    onClick={async () => {
-                      const trimmedName = newCollectionName.trim();
-                      // Check for duplicate name
-                      const isDuplicate = collections.some(
-                        c => c.name.toLowerCase() === trimmedName.toLowerCase()
-                      );
-                      if (isDuplicate) {
-                        showToast('Collection with this name already exists');
-                        return;
-                      }
-                      setCreatingCollection(true);
-                      try {
-                        const newCollection = await onCreateCollection(trimmedName, newCollectionColor);
-                        setShowNewCollectionForm(false);
-                        setNewCollectionName('');
-                        setNewCollectionColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
-                        // Auto-select the newly created collection
-                        if (newCollection?.id) {
-                          setFormData(prev => ({ ...prev, collectionId: newCollection.id }));
-                        }
-                      } finally {
-                        setCreatingCollection(false);
-                      }
-                    }}
-                    className="btn btn-primary btn-sm flex-1"
-                  >
-                    {creatingCollection ? <span className="spinner"></span> : 'Create'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <CollectionInput
+              value={formData.collectionId}
+              onChange={(collectionId) => {
+                setFormData((prev) => ({ ...prev, collectionId }));
+                setHasUnsavedChanges(true);
+                setHasChanges(true);
+              }}
+              collections={collections}
+              onCreateCollection={onCreateCollection}
+              placeholder="Type and press Enter to add collection"
+            />
           </div>
 
         {/* Step 1 Actions */}
@@ -928,17 +830,6 @@ function TestCaseForm({
                 onLoadXrayEntities={onLoadXrayEntities}
               />
             )}
-
-            {/* Step 3 Hint */}
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M7 4v3M7 9v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span>
-                Select Test Plans, Executions, and Sets to link your test case to after import
-              </span>
-            </div>
 
             {/* Step 3 Actions */}
             {currentStep === 3 && (
