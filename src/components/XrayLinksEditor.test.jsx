@@ -130,7 +130,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Save Changes/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Update in Xray/ })).toBeInTheDocument();
   });
 
   it('should exit edit mode when Cancel is clicked', () => {
@@ -143,7 +143,7 @@ describe('XrayLinksEditor', () => {
   it('should disable Save button when no changes made', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
-    expect(screen.getByRole('button', { name: /Save Changes/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Update in Xray/ })).toBeDisabled();
   });
 
   it('should enable Save button when changes are made', async () => {
@@ -154,7 +154,7 @@ describe('XrayLinksEditor', () => {
     fireEvent.click(screen.getByText('Add Plan'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Changes/ })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /Update in Xray/ })).not.toBeDisabled();
     });
   });
 
@@ -162,7 +162,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(api.updateTestLinks).toHaveBeenCalledWith(expect.objectContaining({
@@ -176,7 +176,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(api.updateDraftXrayLinks).toHaveBeenCalledWith('tc-1', expect.any(Object));
@@ -187,7 +187,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Links updated successfully');
@@ -198,7 +198,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(defaultProps.onLinksUpdated).toHaveBeenCalled();
@@ -209,7 +209,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Edit Links/ })).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('API Error');
@@ -237,7 +237,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...props} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Cannot update links: Test issue ID not found');
@@ -250,9 +250,9 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+    expect(screen.getByText('Syncing\.\.\.')).toBeInTheDocument();
   });
 
   it('should handle API exception', async () => {
@@ -261,7 +261,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Network error');
@@ -312,7 +312,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...props} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     await waitFor(() => {
       expect(api.updateTestLinks).toHaveBeenCalled();
@@ -326,7 +326,7 @@ describe('XrayLinksEditor', () => {
     fireEvent.click(screen.getByText('Remove All Plans'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Changes/ })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /Update in Xray/ })).not.toBeDisabled();
     });
   });
 
@@ -357,7 +357,7 @@ describe('XrayLinksEditor', () => {
     render(<XrayLinksEditor {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update in Xray/ }));
 
     // Wait for both API calls to complete
     await waitFor(() => {

@@ -194,11 +194,26 @@ function XrayLinksEditor({
     }
   };
 
+  // Count changes for display
+  const getChangesSummary = () => {
+    if (!editedLinks || !originalLinks) return null;
+    const diff = computeDiff(originalLinks, editedLinks);
+    const adds = diff.testPlans.toAdd.length + diff.testExecutions.toAdd.length +
+                 diff.testSets.toAdd.length + diff.preconditions.toAdd.length;
+    const removes = diff.testPlans.toRemove.length + diff.testExecutions.toRemove.length +
+                    diff.testSets.toRemove.length + diff.preconditions.toRemove.length;
+    if (adds === 0 && removes === 0) return null;
+    const parts = [];
+    if (adds > 0) parts.push(`+${adds}`);
+    if (removes > 0) parts.push(`-${removes}`);
+    return parts.join(' ');
+  };
+
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Xray Links
+          {isEditing ? 'Xray Linking' : 'Xray Links'}
         </h3>
         {!isEditing ? (
           <button
@@ -225,19 +240,24 @@ function XrayLinksEditor({
               type="button"
               onClick={handleSave}
               disabled={saving || !hasChanges()}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-1.5"
             >
               {saving ? (
                 <>
                   <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></span>
-                  Saving...
+                  Syncing...
                 </>
               ) : (
                 <>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M6 2v6M6 2L4 4M6 2l2 2M2 9h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Save Changes
+                  Update in Xray
+                  {getChangesSummary() && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px]">
+                      {getChangesSummary()}
+                    </span>
+                  )}
                 </>
               )}
             </button>
