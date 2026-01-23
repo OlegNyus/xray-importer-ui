@@ -5,69 +5,96 @@ import { updateTestLinks, updateDraftXrayLinks } from '../utils/api';
 // Icons for different link types
 const LinkIcons = {
   testPlans: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="2" y="2" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M5 7h4M7 5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
     </svg>
   ),
   testExecutions: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
   testSets: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="2" y="4" width="7" height="6" rx="1" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M5 2h5a2 2 0 012 2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
     </svg>
   ),
   preconditions: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M7 2v4M7 10v2M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
     </svg>
   ),
   folder: (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2 4v7a1 1 0 001 1h8a1 1 0 001-1V5a1 1 0 00-1-1H7L5.5 2.5A1 1 0 004.8 2H3a1 1 0 00-1 1v1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
     </svg>
   ),
 };
 
-function LinkDisplayItem({ label, displays, jiraBaseUrl, icon }) {
-  const isEmpty = !displays || displays.length === 0;
+function LinkTag({ id, display, jiraBaseUrl }) {
+  const key = display?.split(':')[0] || id;
+  const label = display?.includes(':') ? display.split(':').slice(1).join(':').trim() : null;
 
   return (
-    <div className="flex items-start gap-2">
-      <div className="mt-0.5 text-gray-400 dark:text-gray-500">
-        {icon}
+    <a
+      href={`${jiraBaseUrl}/browse/${key}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 hover:bg-gray-50 dark:hover:bg-slate-600/50 hover:border-gray-300 dark:hover:border-slate-500/50 transition-all duration-200 cursor-pointer h-10 w-full"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="font-mono text-sm font-medium text-primary-600 dark:text-purple-400 whitespace-nowrap">
+        {key}
+      </span>
+      {label && (
+        <>
+          <span className="text-gray-400 dark:text-slate-500">:</span>
+          <span className="text-gray-700 dark:text-slate-300 text-sm truncate">{label}</span>
+        </>
+      )}
+    </a>
+  );
+}
+
+function CategoryTile({ title, icon, items, jiraBaseUrl, isFolder = false }) {
+  return (
+    <div className="bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-200 dark:border-slate-700/50 p-4 min-w-0 flex flex-col">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-gray-400 dark:text-slate-400">{icon}</span>
+        <h3 className="text-sm font-medium text-gray-600 dark:text-slate-300 uppercase tracking-wide">
+          {title}
+        </h3>
+        {!isFolder && items?.length > 0 && (
+          <span className="ml-auto text-xs text-gray-500 dark:text-slate-500 bg-gray-200 dark:bg-slate-700/50 px-2 py-0.5 rounded-full">
+            {items.length}
+          </span>
+        )}
       </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
-        {isEmpty ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500 italic">—</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {displays.map((item) => {
-              const key = item.display?.split(':')[0] || item.id;
-              return (
-                <a
-                  key={item.id}
-                  href={`${jiraBaseUrl}/browse/${key}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md text-xs border border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors shadow-sm"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {item.display || key}
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-40">
-                    <path d="M3 7L7 3M7 3H4M7 3V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </a>
-              );
-            })}
+
+      <div className="flex flex-col gap-2 min-w-0 flex-1">
+        {isFolder ? (
+          <div className="flex items-center px-3 py-2 rounded-lg bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600/50 h-10 w-full">
+            <span className="text-gray-700 dark:text-slate-300 text-sm font-mono truncate">{items}</span>
           </div>
+        ) : (
+          <>
+            {items?.length > 0 ? (
+              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                {items.map((item) => (
+                  <LinkTag
+                    key={item.id}
+                    id={item.id}
+                    display={item.display}
+                    jiraBaseUrl={jiraBaseUrl}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-10 text-gray-400 dark:text-slate-500 text-sm italic">
+                No links added
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -245,21 +272,45 @@ function XrayLinksEditor({
   };
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {isEditing ? 'Xray Linking' : 'Xray Links'}
-        </h3>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700/50 overflow-hidden">
+      {/* Custom scrollbar styles */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgb(156 163 175 / 0.5);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgb(156 163 175 / 0.8);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgb(71 85 105 / 0.5);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgb(71 85 105 / 0.8);
+        }
+      `}</style>
+
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700/50">
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Xray Links</h2>
+        </div>
+
         {!isEditing ? (
           <button
             type="button"
             onClick={handleEditClick}
-            className="px-3 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-lg transition-colors flex items-center gap-1.5"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-600/50 text-sm font-medium transition-all duration-200"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M8.5 1.5l2 2-6 6H2.5v-2l6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
-            Edit Links
+            Update Links
           </button>
         ) : (
           <div className="flex items-center gap-2">
@@ -267,7 +318,7 @@ function XrayLinksEditor({
               type="button"
               onClick={handleCancel}
               disabled={saving}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -275,21 +326,21 @@ function XrayLinksEditor({
               type="button"
               onClick={handleSave}
               disabled={saving || !hasChanges()}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-1.5"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-purple-600 dark:to-indigo-600 text-white text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
-                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></span>
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                   Syncing...
                 </>
               ) : (
                 <>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 2v6M6 2L4 4M6 2l2 2M2 9h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Update in Xray
+                  Done
                   {getChangesSummary() && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px]">
+                    <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">
                       {getChangesSummary()}
                     </span>
                   )}
@@ -300,65 +351,62 @@ function XrayLinksEditor({
         )}
       </div>
 
-      {isEditing ? (
-        /* Edit Mode - Use XrayLinkingPanel */
-        <XrayLinkingPanel
-          projectKey={activeProject}
-          value={editedLinks || {}}
-          onChange={setEditedLinks}
-          showValidation={false}
-          xrayEntitiesCache={xrayEntitiesCache}
-          onLoadXrayEntities={onLoadXrayEntities}
-          hideHint
-          hideHeader
-        />
-      ) : (
-        /* Read-only Mode - Display current links */
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <LinkDisplayItem
-              label="Test Plans"
-              displays={xrayLinking.testPlanDisplays}
-              jiraBaseUrl={jiraBaseUrl}
-              icon={LinkIcons.testPlans}
-            />
-            <LinkDisplayItem
-              label="Test Executions"
-              displays={xrayLinking.testExecutionDisplays}
-              jiraBaseUrl={jiraBaseUrl}
-              icon={LinkIcons.testExecutions}
-            />
-            <LinkDisplayItem
-              label="Test Sets"
-              displays={xrayLinking.testSetDisplays}
-              jiraBaseUrl={jiraBaseUrl}
-              icon={LinkIcons.testSets}
-            />
-            {/* Folder */}
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 text-gray-400 dark:text-gray-500">
-                {LinkIcons.folder}
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Folder</span>
-                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1 font-mono bg-white dark:bg-gray-700 px-2 py-1 rounded-md border border-gray-200 dark:border-gray-600 inline-block">
-                  {xrayLinking.folderPath || '/'}
-                </p>
-              </div>
+      <div className="p-6">
+        {isEditing ? (
+          /* Edit Mode - Use XrayLinkingPanel */
+          <XrayLinkingPanel
+            projectKey={activeProject}
+            value={editedLinks || {}}
+            onChange={setEditedLinks}
+            showValidation={false}
+            xrayEntitiesCache={xrayEntitiesCache}
+            onLoadXrayEntities={onLoadXrayEntities}
+            hideHint
+            hideHeader
+          />
+        ) : (
+          /* Read-only Mode - Display current links */
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CategoryTile
+                title="Test Plans"
+                icon={LinkIcons.testPlans}
+                items={xrayLinking.testPlanDisplays}
+                jiraBaseUrl={jiraBaseUrl}
+              />
+              <CategoryTile
+                title="Test Executions"
+                icon={LinkIcons.testExecutions}
+                items={xrayLinking.testExecutionDisplays}
+                jiraBaseUrl={jiraBaseUrl}
+              />
+              <CategoryTile
+                title="Test Sets"
+                icon={LinkIcons.testSets}
+                items={xrayLinking.testSetDisplays}
+                jiraBaseUrl={jiraBaseUrl}
+              />
+              <CategoryTile
+                title="Folder"
+                icon={LinkIcons.folder}
+                items={xrayLinking.folderPath || '/'}
+                jiraBaseUrl={jiraBaseUrl}
+                isFolder
+              />
             </div>
-          </div>
 
-          {/* Preconditions - full width */}
-          <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
-            <LinkDisplayItem
-              label="Preconditions"
-              displays={xrayLinking.preconditionDisplays}
-              jiraBaseUrl={jiraBaseUrl}
-              icon={LinkIcons.preconditions}
-            />
-          </div>
-        </div>
-      )}
+            {/* Preconditions - full width */}
+            <div className="mt-4">
+              <CategoryTile
+                title="Preconditions"
+                icon={LinkIcons.preconditions}
+                items={xrayLinking.preconditionDisplays}
+                jiraBaseUrl={jiraBaseUrl}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
