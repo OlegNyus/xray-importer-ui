@@ -9,7 +9,7 @@ describe('TagInput', () => {
   const defaultProps = {
     tags: [],
     onChange: vi.fn(),
-    placeholder: 'Add labels...',
+    placeholder: 'Search or create...',
     disabled: false,
   };
 
@@ -19,17 +19,22 @@ describe('TagInput', () => {
     api.saveLabels.mockResolvedValue({ success: true });
   });
 
-  it('should render placeholder when no tags', async () => {
+  // Helper to open the dropdown
+  function openDropdown() {
+    const field = document.querySelector('.input');
+    fireEvent.click(field);
+  }
+
+  it('should render placeholder when no tags and closed', async () => {
     render(<TagInput {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Add labels...')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Search or create...')).toBeInTheDocument();
   });
 
-  it('should not render placeholder when has tags', async () => {
-    render(<TagInput {...defaultProps} tags={['ExistingTag']} />);
+  it('should show search input when opened', async () => {
+    render(<TagInput {...defaultProps} />);
+    openDropdown();
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Add labels...')).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Search or create...')).toBeInTheDocument();
     });
   });
 
@@ -51,7 +56,6 @@ describe('TagInput', () => {
     render(<TagInput {...defaultProps} tags={['Tag1', 'Tag2']} onChange={onChange} />);
 
     const removeButtons = screen.getAllByRole('button');
-    // Find the remove button inside the first tag
     const firstRemoveBtn = removeButtons.find(btn => btn.closest('.tag'));
     fireEvent.click(firstRemoveBtn);
 
@@ -62,7 +66,12 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} onChange={onChange} />);
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    openDropdown();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search or create...')).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewTag' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -73,7 +82,12 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} tags={['ExistingTag']} onChange={onChange} />);
 
-    const input = screen.getByRole('textbox');
+    openDropdown();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'ExistingTag' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -84,7 +98,12 @@ describe('TagInput', () => {
     const onChange = vi.fn();
     render(<TagInput {...defaultProps} tags={['Tag1', 'Tag2']} onChange={onChange} />);
 
-    const input = screen.getByRole('textbox');
+    openDropdown();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    const input = screen.getByRole('combobox');
     fireEvent.keyDown(input, { key: 'Backspace' });
 
     expect(onChange).toHaveBeenCalledWith(['Tag1']);
@@ -93,8 +112,12 @@ describe('TagInput', () => {
   it('should close dropdown on Escape', async () => {
     render(<TagInput {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    await waitFor(() => {
+      expect(api.fetchLabels).toHaveBeenCalled();
+    });
+
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'Lab' } });
 
     // Dropdown should be visible
@@ -110,15 +133,15 @@ describe('TagInput', () => {
     });
   });
 
-  it('should show dropdown on input focus', async () => {
+  it('should show dropdown when field is clicked', async () => {
     render(<TagInput {...defaultProps} />);
 
     await waitFor(() => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'L' } });
 
     await waitFor(() => {
@@ -134,8 +157,8 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'Label' } });
 
     await waitFor(() => {
@@ -153,8 +176,8 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'Label1' } });
 
     await waitFor(() => {
@@ -163,19 +186,20 @@ describe('TagInput', () => {
     });
   });
 
-  it('should show Add new option for new labels', async () => {
+  it('should show Create option for new labels', async () => {
     render(<TagInput {...defaultProps} />);
 
     await waitFor(() => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Add "NewLabel"')).toBeInTheDocument();
+      const createOption = screen.getByText('NewLabel', { selector: '.font-medium' });
+      expect(createOption).toBeInTheDocument();
     });
   });
 
@@ -187,7 +211,8 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -208,8 +233,8 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
-    fireEvent.focus(input);
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'L' } });
 
     await waitFor(() => {
@@ -226,7 +251,8 @@ describe('TagInput', () => {
   it('should be disabled when disabled prop is true', async () => {
     render(<TagInput {...defaultProps} disabled={true} tags={['Tag1']} />);
 
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    // Input should not be visible when disabled
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     // Tag remove buttons should not be visible
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
@@ -255,7 +281,8 @@ describe('TagInput', () => {
       expect(api.fetchLabels).toHaveBeenCalled();
     });
 
-    const input = screen.getByPlaceholderText('Add labels...');
+    openDropdown();
+    const input = screen.getByPlaceholderText('Search or create...');
     fireEvent.change(input, { target: { value: 'NewLabel' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -264,5 +291,31 @@ describe('TagInput', () => {
     });
 
     consoleSpy.mockRestore();
+  });
+
+  it('should show chevron that rotates when open', async () => {
+    render(<TagInput {...defaultProps} />);
+
+    const chevron = document.querySelector('svg.transition-transform');
+    expect(chevron).not.toHaveClass('rotate-180');
+
+    openDropdown();
+
+    await waitFor(() => {
+      expect(chevron).toHaveClass('rotate-180');
+    });
+  });
+
+  it('should highlight field when open', async () => {
+    render(<TagInput {...defaultProps} />);
+
+    const field = document.querySelector('.input');
+    expect(field).not.toHaveClass('ring-2');
+
+    openDropdown();
+
+    await waitFor(() => {
+      expect(field).toHaveClass('ring-2');
+    });
   });
 });

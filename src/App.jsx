@@ -16,6 +16,7 @@ import {
   updateDraftStatus,
   migrateDrafts,
 } from './utils/api';
+import { version } from '../package.json';
 
 const STORAGE_KEY = 'raydrop_saved_test_cases';
 
@@ -368,7 +369,7 @@ function App() {
       </main>
 
       <footer className="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700">
-        RayDrop &bull; v2.1.0
+        RayDrop &bull; v{version}
       </footer>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

@@ -59,14 +59,11 @@ describe('SavedTestCases', () => {
     api.bulkImportDrafts.mockResolvedValue({ success: true, draftIds: ['1'] });
   });
 
-  it('should render title for drafts view', () => {
+  it('should not render internal titles (uses page header from parent)', () => {
     render(<SavedTestCases {...defaultProps} />);
-    expect(screen.getByText('Draft Test Cases')).toBeInTheDocument();
-  });
-
-  it('should render title for imported view', () => {
-    render(<SavedTestCases {...defaultProps} filterStatus="imported" />);
-    expect(screen.getByText('Imported Test Cases')).toBeInTheDocument();
+    // Titles are now in page header, not internal to component
+    expect(screen.queryByText('Draft Test Cases')).not.toBeInTheDocument();
+    expect(screen.queryByText('Imported Test Cases')).not.toBeInTheDocument();
   });
 
   it('should show empty state when no test cases', () => {

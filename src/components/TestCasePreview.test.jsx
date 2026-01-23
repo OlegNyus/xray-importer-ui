@@ -106,18 +106,21 @@ describe('TestCasePreview', () => {
     expect(screen.getByText('regression')).toBeInTheDocument();
   });
 
-  it('should not render labels section when no labels', () => {
+  it('should render "No labels" when labels array is empty', () => {
     const props = {
       ...defaultProps,
       testCase: { ...defaultProps.testCase, labels: [] },
     };
     render(<TestCasePreview {...props} />);
-    expect(screen.queryByText('Labels')).not.toBeInTheDocument();
+    expect(screen.getByText('No labels')).toBeInTheDocument();
   });
 
-  it('should render test steps count', () => {
+  it('should render test steps header with count badge', () => {
     render(<TestCasePreview {...defaultProps} />);
-    expect(screen.getByText('Test Steps (2)')).toBeInTheDocument();
+    expect(screen.getByText('Test Steps')).toBeInTheDocument();
+    // Count badge shows step count - use getAllByText since step numbers also show "2"
+    const countBadges = screen.getAllByText('2');
+    expect(countBadges.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should render step actions', () => {
@@ -131,7 +134,7 @@ describe('TestCasePreview', () => {
     expect(screen.getByText('Step 1 Data')).toBeInTheDocument();
   });
 
-  it('should not render step data section when not available', () => {
+  it('should render "No test data" placeholder when step data is not available', () => {
     const props = {
       ...defaultProps,
       testCase: {
@@ -140,7 +143,7 @@ describe('TestCasePreview', () => {
       },
     };
     render(<TestCasePreview {...props} />);
-    expect(screen.queryByText('Test Data')).not.toBeInTheDocument();
+    expect(screen.getByText('No test data')).toBeInTheDocument();
   });
 
   it('should render step results', () => {
@@ -149,10 +152,11 @@ describe('TestCasePreview', () => {
     expect(screen.getByText('Step 2 Result')).toBeInTheDocument();
   });
 
-  it('should render step numbers', () => {
+  it('should render step numbers in badges', () => {
     render(<TestCasePreview {...defaultProps} />);
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Step numbers are rendered in circular badges
+    const stepBadges = document.querySelectorAll('.rounded-full');
+    expect(stepBadges.length).toBeGreaterThanOrEqual(2);
   });
 
   it('should render "No test steps defined" when steps is empty', () => {

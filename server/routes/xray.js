@@ -255,75 +255,114 @@ router.post('/link', async (req, res) => {
       }
     }
 
-    // Link to Test Plans (multiple)
+    // Build array of all linking operations to run in parallel
+    const linkingPromises = [];
+
+    // Test Plan linking promises
     if (testPlanIds && testPlanIds.length > 0) {
       for (const testPlanId of testPlanIds) {
-        try {
-          const result = await addTestsToTestPlan(testPlanId, [testIssueId]);
-          results.testPlans.push({ id: testPlanId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Plan ${testPlanId}: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testPlans.push({ id: testPlanId, success: false, error: error.message });
-          warnings.push(`Test Plan ${testPlanId} linking failed: ${error.message}`);
-        }
+        linkingPromises.push(
+          addTestsToTestPlan(testPlanId, [testIssueId])
+            .then((result) => ({ type: 'testPlan', id: testPlanId, success: true, result }))
+            .catch((error) => ({ type: 'testPlan', id: testPlanId, success: false, error: error.message }))
+        );
       }
     }
 
-    // Link to Test Executions (multiple)
+    // Test Execution linking promises
     if (testExecutionIds && testExecutionIds.length > 0) {
       for (const testExecutionId of testExecutionIds) {
-        try {
-          const result = await addTestsToTestExecution(testExecutionId, [testIssueId]);
-          results.testExecutions.push({ id: testExecutionId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Execution ${testExecutionId}: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testExecutions.push({ id: testExecutionId, success: false, error: error.message });
-          warnings.push(`Test Execution ${testExecutionId} linking failed: ${error.message}`);
-        }
+        linkingPromises.push(
+          addTestsToTestExecution(testExecutionId, [testIssueId])
+            .then((result) => ({ type: 'testExecution', id: testExecutionId, success: true, result }))
+            .catch((error) => ({ type: 'testExecution', id: testExecutionId, success: false, error: error.message }))
+        );
       }
     }
 
-    // Link to Test Sets (multiple)
+    // Test Set linking promises
     if (testSetIds && testSetIds.length > 0) {
       for (const testSetId of testSetIds) {
-        try {
-          const result = await addTestsToTestSet(testSetId, [testIssueId]);
-          results.testSets.push({ id: testSetId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Set ${testSetId}: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testSets.push({ id: testSetId, success: false, error: error.message });
-          warnings.push(`Test Set ${testSetId} linking failed: ${error.message}`);
-        }
+        linkingPromises.push(
+          addTestsToTestSet(testSetId, [testIssueId])
+            .then((result) => ({ type: 'testSet', id: testSetId, success: true, result }))
+            .catch((error) => ({ type: 'testSet', id: testSetId, success: false, error: error.message }))
+        );
       }
     }
 
-    // Add to Folder
+    // Folder linking promise
     if (resolvedProjectId && folderPath) {
-      try {
-        results.folder = await addTestsToFolder(resolvedProjectId, folderPath, [testIssueId]);
-        if (results.folder.warnings?.length) {
-          warnings.push(`Folder: ${results.folder.warnings.join(', ')}`);
-        }
-      } catch (error) {
-        warnings.push(`Folder linking failed: ${error.message}`);
-      }
+      linkingPromises.push(
+        addTestsToFolder(resolvedProjectId, folderPath, [testIssueId])
+          .then((result) => ({ type: 'folder', success: true, result }))
+          .catch((error) => ({ type: 'folder', success: false, error: error.message }))
+      );
     }
 
-    // Add Preconditions
+    // Preconditions linking promise
     if (preconditionIds && preconditionIds.length > 0) {
-      try {
-        results.preconditions = await addPreconditionsToTest(testIssueId, preconditionIds);
-        if (results.preconditions.warning) {
-          warnings.push(`Preconditions: ${results.preconditions.warning}`);
-        }
-      } catch (error) {
-        warnings.push(`Preconditions linking failed: ${error.message}`);
+      linkingPromises.push(
+        addPreconditionsToTest(testIssueId, preconditionIds)
+          .then((result) => ({ type: 'preconditions', success: true, result }))
+          .catch((error) => ({ type: 'preconditions', success: false, error: error.message }))
+      );
+    }
+
+    // Execute all linking operations in parallel
+    const linkingResults = await Promise.all(linkingPromises);
+
+    // Process results and collect warnings
+    for (const linkResult of linkingResults) {
+      switch (linkResult.type) {
+        case 'testPlan':
+          results.testPlans.push({ id: linkResult.id, success: linkResult.success, result: linkResult.result });
+          if (!linkResult.success) {
+            warnings.push(`Test Plan ${linkResult.id} linking failed: ${linkResult.error}`);
+          } else if (linkResult.result?.warning) {
+            warnings.push(`Test Plan ${linkResult.id}: ${linkResult.result.warning}`);
+          }
+          break;
+
+        case 'testExecution':
+          results.testExecutions.push({ id: linkResult.id, success: linkResult.success, result: linkResult.result });
+          if (!linkResult.success) {
+            warnings.push(`Test Execution ${linkResult.id} linking failed: ${linkResult.error}`);
+          } else if (linkResult.result?.warning) {
+            warnings.push(`Test Execution ${linkResult.id}: ${linkResult.result.warning}`);
+          }
+          break;
+
+        case 'testSet':
+          results.testSets.push({ id: linkResult.id, success: linkResult.success, result: linkResult.result });
+          if (!linkResult.success) {
+            warnings.push(`Test Set ${linkResult.id} linking failed: ${linkResult.error}`);
+          } else if (linkResult.result?.warning) {
+            warnings.push(`Test Set ${linkResult.id}: ${linkResult.result.warning}`);
+          }
+          break;
+
+        case 'folder':
+          if (linkResult.success) {
+            results.folder = linkResult.result;
+            if (linkResult.result?.warnings?.length) {
+              warnings.push(`Folder: ${linkResult.result.warnings.join(', ')}`);
+            }
+          } else {
+            warnings.push(`Folder linking failed: ${linkResult.error}`);
+          }
+          break;
+
+        case 'preconditions':
+          if (linkResult.success) {
+            results.preconditions = linkResult.result;
+            if (linkResult.result?.warning) {
+              warnings.push(`Preconditions: ${linkResult.result.warning}`);
+            }
+          } else {
+            warnings.push(`Preconditions linking failed: ${linkResult.error}`);
+          }
+          break;
       }
     }
 
@@ -436,148 +475,218 @@ router.post('/update-links', async (req, res) => {
       }
     }
 
+    // Build array of all link update operations to run in parallel
+    const updatePromises = [];
+
     // Test Plans - Add
     if (diff.testPlans?.toAdd?.length > 0) {
       for (const testPlanId of diff.testPlans.toAdd) {
-        try {
-          const result = await addTestsToTestPlan(testPlanId, [testIssueId]);
-          results.testPlans.added.push({ id: testPlanId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Plan ${testPlanId} add: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testPlans.added.push({ id: testPlanId, success: false, error: error.message });
-          warnings.push(`Test Plan ${testPlanId} add failed: ${error.message}`);
-        }
+        updatePromises.push(
+          addTestsToTestPlan(testPlanId, [testIssueId])
+            .then((result) => ({ type: 'testPlan', action: 'add', id: testPlanId, success: true, result }))
+            .catch((error) => ({ type: 'testPlan', action: 'add', id: testPlanId, success: false, error: error.message }))
+        );
       }
     }
 
     // Test Plans - Remove
     if (diff.testPlans?.toRemove?.length > 0) {
       for (const testPlanId of diff.testPlans.toRemove) {
-        try {
-          const result = await removeTestsFromTestPlan(testPlanId, [testIssueId]);
-          results.testPlans.removed.push({ id: testPlanId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Plan ${testPlanId} remove: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testPlans.removed.push({ id: testPlanId, success: false, error: error.message });
-          warnings.push(`Test Plan ${testPlanId} remove failed: ${error.message}`);
-        }
+        updatePromises.push(
+          removeTestsFromTestPlan(testPlanId, [testIssueId])
+            .then((result) => ({ type: 'testPlan', action: 'remove', id: testPlanId, success: true, result }))
+            .catch((error) => ({ type: 'testPlan', action: 'remove', id: testPlanId, success: false, error: error.message }))
+        );
       }
     }
 
     // Test Executions - Add
     if (diff.testExecutions?.toAdd?.length > 0) {
       for (const testExecutionId of diff.testExecutions.toAdd) {
-        try {
-          const result = await addTestsToTestExecution(testExecutionId, [testIssueId]);
-          results.testExecutions.added.push({ id: testExecutionId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Execution ${testExecutionId} add: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testExecutions.added.push({ id: testExecutionId, success: false, error: error.message });
-          warnings.push(`Test Execution ${testExecutionId} add failed: ${error.message}`);
-        }
+        updatePromises.push(
+          addTestsToTestExecution(testExecutionId, [testIssueId])
+            .then((result) => ({ type: 'testExecution', action: 'add', id: testExecutionId, success: true, result }))
+            .catch((error) => ({ type: 'testExecution', action: 'add', id: testExecutionId, success: false, error: error.message }))
+        );
       }
     }
 
     // Test Executions - Remove
     if (diff.testExecutions?.toRemove?.length > 0) {
       for (const testExecutionId of diff.testExecutions.toRemove) {
-        try {
-          const result = await removeTestsFromTestExecution(testExecutionId, [testIssueId]);
-          results.testExecutions.removed.push({ id: testExecutionId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Execution ${testExecutionId} remove: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testExecutions.removed.push({ id: testExecutionId, success: false, error: error.message });
-          warnings.push(`Test Execution ${testExecutionId} remove failed: ${error.message}`);
-        }
+        updatePromises.push(
+          removeTestsFromTestExecution(testExecutionId, [testIssueId])
+            .then((result) => ({ type: 'testExecution', action: 'remove', id: testExecutionId, success: true, result }))
+            .catch((error) => ({ type: 'testExecution', action: 'remove', id: testExecutionId, success: false, error: error.message }))
+        );
       }
     }
 
     // Test Sets - Add
     if (diff.testSets?.toAdd?.length > 0) {
       for (const testSetId of diff.testSets.toAdd) {
-        try {
-          const result = await addTestsToTestSet(testSetId, [testIssueId]);
-          results.testSets.added.push({ id: testSetId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Set ${testSetId} add: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testSets.added.push({ id: testSetId, success: false, error: error.message });
-          warnings.push(`Test Set ${testSetId} add failed: ${error.message}`);
-        }
+        updatePromises.push(
+          addTestsToTestSet(testSetId, [testIssueId])
+            .then((result) => ({ type: 'testSet', action: 'add', id: testSetId, success: true, result }))
+            .catch((error) => ({ type: 'testSet', action: 'add', id: testSetId, success: false, error: error.message }))
+        );
       }
     }
 
     // Test Sets - Remove
     if (diff.testSets?.toRemove?.length > 0) {
       for (const testSetId of diff.testSets.toRemove) {
-        try {
-          const result = await removeTestsFromTestSet(testSetId, [testIssueId]);
-          results.testSets.removed.push({ id: testSetId, success: true, result });
-          if (result.warning) {
-            warnings.push(`Test Set ${testSetId} remove: ${result.warning}`);
-          }
-        } catch (error) {
-          results.testSets.removed.push({ id: testSetId, success: false, error: error.message });
-          warnings.push(`Test Set ${testSetId} remove failed: ${error.message}`);
-        }
+        updatePromises.push(
+          removeTestsFromTestSet(testSetId, [testIssueId])
+            .then((result) => ({ type: 'testSet', action: 'remove', id: testSetId, success: true, result }))
+            .catch((error) => ({ type: 'testSet', action: 'remove', id: testSetId, success: false, error: error.message }))
+        );
       }
     }
 
-    // Folder - Move to new folder if changed
+    // Folder - Move to new folder if changed (must be sequential: remove then add)
     if (diff.folder && diff.folder.original !== diff.folder.current && resolvedProjectId) {
-      try {
-        // Remove from old folder (if not root)
-        if (diff.folder.original && diff.folder.original !== '/') {
+      updatePromises.push(
+        (async () => {
+          const folderWarnings = [];
           try {
-            await removeTestsFromFolder(resolvedProjectId, diff.folder.original, [testIssueId]);
-          } catch (error) {
-            warnings.push(`Folder remove from ${diff.folder.original} failed: ${error.message}`);
-          }
-        }
+            // Remove from old folder (if not root)
+            if (diff.folder.original && diff.folder.original !== '/') {
+              try {
+                await removeTestsFromFolder(resolvedProjectId, diff.folder.original, [testIssueId]);
+              } catch (error) {
+                folderWarnings.push(`Folder remove from ${diff.folder.original} failed: ${error.message}`);
+              }
+            }
 
-        // Add to new folder
-        if (diff.folder.current && diff.folder.current !== '/') {
-          const folderResult = await addTestsToFolder(resolvedProjectId, diff.folder.current, [testIssueId]);
-          results.folder = folderResult;
-          if (folderResult.warnings?.length) {
-            warnings.push(`Folder: ${folderResult.warnings.join(', ')}`);
+            // Add to new folder
+            if (diff.folder.current && diff.folder.current !== '/') {
+              const folderResult = await addTestsToFolder(resolvedProjectId, diff.folder.current, [testIssueId]);
+              return { type: 'folder', action: 'move', success: true, result: folderResult, warnings: folderWarnings };
+            }
+
+            return { type: 'folder', action: 'move', success: true, result: null, warnings: folderWarnings };
+          } catch (error) {
+            return { type: 'folder', action: 'move', success: false, error: error.message, warnings: folderWarnings };
           }
-        }
-      } catch (error) {
-        warnings.push(`Folder update failed: ${error.message}`);
-      }
+        })()
+      );
     }
 
     // Preconditions - Add
     if (diff.preconditions?.toAdd?.length > 0) {
-      try {
-        results.preconditions.added = await addPreconditionsToTest(testIssueId, diff.preconditions.toAdd);
-        if (results.preconditions.added.warning) {
-          warnings.push(`Preconditions add: ${results.preconditions.added.warning}`);
-        }
-      } catch (error) {
-        warnings.push(`Preconditions add failed: ${error.message}`);
-      }
+      updatePromises.push(
+        addPreconditionsToTest(testIssueId, diff.preconditions.toAdd)
+          .then((result) => ({ type: 'preconditions', action: 'add', success: true, result }))
+          .catch((error) => ({ type: 'preconditions', action: 'add', success: false, error: error.message }))
+      );
     }
 
     // Preconditions - Remove
     if (diff.preconditions?.toRemove?.length > 0) {
-      try {
-        results.preconditions.removed = await removePreconditionsFromTest(testIssueId, diff.preconditions.toRemove);
-        if (results.preconditions.removed.warning) {
-          warnings.push(`Preconditions remove: ${results.preconditions.removed.warning}`);
-        }
-      } catch (error) {
-        warnings.push(`Preconditions remove failed: ${error.message}`);
+      updatePromises.push(
+        removePreconditionsFromTest(testIssueId, diff.preconditions.toRemove)
+          .then((result) => ({ type: 'preconditions', action: 'remove', success: true, result }))
+          .catch((error) => ({ type: 'preconditions', action: 'remove', success: false, error: error.message }))
+      );
+    }
+
+    // Execute all update operations in parallel
+    const updateResults = await Promise.all(updatePromises);
+
+    // Process results and collect warnings
+    for (const updateResult of updateResults) {
+      switch (updateResult.type) {
+        case 'testPlan':
+          if (updateResult.action === 'add') {
+            results.testPlans.added.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Plan ${updateResult.id} add failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Plan ${updateResult.id} add: ${updateResult.result.warning}`);
+            }
+          } else {
+            results.testPlans.removed.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Plan ${updateResult.id} remove failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Plan ${updateResult.id} remove: ${updateResult.result.warning}`);
+            }
+          }
+          break;
+
+        case 'testExecution':
+          if (updateResult.action === 'add') {
+            results.testExecutions.added.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Execution ${updateResult.id} add failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Execution ${updateResult.id} add: ${updateResult.result.warning}`);
+            }
+          } else {
+            results.testExecutions.removed.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Execution ${updateResult.id} remove failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Execution ${updateResult.id} remove: ${updateResult.result.warning}`);
+            }
+          }
+          break;
+
+        case 'testSet':
+          if (updateResult.action === 'add') {
+            results.testSets.added.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Set ${updateResult.id} add failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Set ${updateResult.id} add: ${updateResult.result.warning}`);
+            }
+          } else {
+            results.testSets.removed.push({ id: updateResult.id, success: updateResult.success, result: updateResult.result });
+            if (!updateResult.success) {
+              warnings.push(`Test Set ${updateResult.id} remove failed: ${updateResult.error}`);
+            } else if (updateResult.result?.warning) {
+              warnings.push(`Test Set ${updateResult.id} remove: ${updateResult.result.warning}`);
+            }
+          }
+          break;
+
+        case 'folder':
+          // Add any folder operation warnings (e.g., remove failures)
+          if (updateResult.warnings?.length) {
+            warnings.push(...updateResult.warnings);
+          }
+          if (updateResult.success) {
+            results.folder = updateResult.result;
+            if (updateResult.result?.warnings?.length) {
+              warnings.push(`Folder: ${updateResult.result.warnings.join(', ')}`);
+            }
+          } else {
+            warnings.push(`Folder update failed: ${updateResult.error}`);
+          }
+          break;
+
+        case 'preconditions':
+          if (updateResult.action === 'add') {
+            if (updateResult.success) {
+              results.preconditions.added = updateResult.result;
+              if (updateResult.result?.warning) {
+                warnings.push(`Preconditions add: ${updateResult.result.warning}`);
+              }
+            } else {
+              warnings.push(`Preconditions add failed: ${updateResult.error}`);
+            }
+          } else {
+            if (updateResult.success) {
+              results.preconditions.removed = updateResult.result;
+              if (updateResult.result?.warning) {
+                warnings.push(`Preconditions remove: ${updateResult.result.warning}`);
+              }
+            } else {
+              warnings.push(`Preconditions remove failed: ${updateResult.error}`);
+            }
+          }
+          break;
       }
     }
 

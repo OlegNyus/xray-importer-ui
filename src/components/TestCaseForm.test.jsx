@@ -80,14 +80,15 @@ describe('TestCaseForm', () => {
     api.importDraft.mockResolvedValue({ success: true, jobId: 'job-123' });
   });
 
-  it('should render Create Test Case title when not editing', () => {
+  it('should show New badge when creating new test case', () => {
     render(<TestCaseForm {...defaultProps} />);
-    expect(screen.getByText('Create Test Case')).toBeInTheDocument();
+    // Title is in page header, form shows status badge and project
+    expect(screen.getByText('New')).toBeInTheDocument();
   });
 
-  it('should render Edit Test Case title when editing', () => {
-    render(<TestCaseForm {...defaultProps} editingId="tc-1" editingTestCase={{ summary: 'Test', steps: [] }} />);
-    expect(screen.getByText('Edit Test Case')).toBeInTheDocument();
+  it('should show Draft badge when editing draft', () => {
+    render(<TestCaseForm {...defaultProps} editingId="tc-1" editingTestCase={{ summary: 'Test', steps: [], status: 'draft' }} />);
+    expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
   it('should render TestCasePreview when imported', () => {
@@ -951,64 +952,84 @@ describe('TestCaseForm', () => {
     expect(screen.getByText('newTag')).toBeInTheDocument();
   });
 
-  it('should show collection selector with New button', () => {
-    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests' }]} onCreateCollection={vi.fn()} />);
+  it('should show collection input with placeholder', () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '+ New' })).toBeInTheDocument();
+    // Collection field should have the placeholder
+    expect(screen.getByText('Collection')).toBeInTheDocument();
+    expect(screen.getAllByText('Search or create...').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should show new collection form when clicking + New', () => {
-    render(<TestCaseForm {...defaultProps} onCreateCollection={vi.fn()} />);
+  it('should show dropdown with existing collections when clicked', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-
-    expect(screen.getByPlaceholderText('Collection name...')).toBeInTheDocument();
-  });
-
-  it('should cancel new collection form', () => {
-    render(<TestCaseForm {...defaultProps} onCreateCollection={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.click(screen.getByText('Cancel'));
-
-    expect(screen.queryByPlaceholderText('Collection name...')).not.toBeInTheDocument();
-  });
-
-  it('should create new collection', async () => {
-    const onCreateCollection = vi.fn().mockResolvedValue({ id: 'new-col', name: 'Test Collection' });
-    render(<TestCaseForm {...defaultProps} onCreateCollection={onCreateCollection} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.change(screen.getByPlaceholderText('Collection name...'), {
-      target: { value: 'Test Collection' },
-    });
-    fireEvent.click(screen.getByText('Create'));
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
     await waitFor(() => {
-      expect(onCreateCollection).toHaveBeenCalledWith('Test Collection', expect.any(String));
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
     });
   });
 
-  it('should show error for duplicate collection name', async () => {
-    const showToast = vi.fn();
-    render(
-      <TestCaseForm
-        {...defaultProps}
-        showToast={showToast}
-        collections={[{ id: 'col-1', name: 'Existing' }]}
-        onCreateCollection={vi.fn()}
-      />
-    );
+  it('should select existing collection from dropdown', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[{ id: 'col-1', name: 'Smoke Tests', color: '#6366f1' }]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ New' }));
-    fireEvent.change(screen.getByPlaceholderText('Collection name...'), {
-      target: { value: 'Existing' },
-    });
-    fireEvent.click(screen.getByText('Create'));
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith('Collection with this name already exists');
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Smoke Tests'));
+
+    // Collection should be selected (shown as chip)
+    await waitFor(() => {
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
+    });
+  });
+
+  it('should filter collections when searching', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[
+      { id: 'col-1', name: 'Smoke Tests', color: '#6366f1' },
+      { id: 'col-2', name: 'Integration Tests', color: '#22c55e' },
+    ]} />);
+
+    // Find collection field (it's after the Labels field)
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
+
+    // Wait for input to appear and type in search input
+    await waitFor(() => {
+      const inputs = screen.getAllByPlaceholderText('Search or create...');
+      expect(inputs.length).toBeGreaterThan(0);
+    });
+
+    const inputs = screen.getAllByPlaceholderText('Search or create...');
+    const searchInput = inputs[inputs.length - 1]; // Last one is collection
+    fireEvent.change(searchInput, { target: { value: 'Smoke' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Smoke Tests')).toBeInTheDocument();
+      expect(screen.queryByText('Integration Tests')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show no collections message when none available', async () => {
+    render(<TestCaseForm {...defaultProps} collections={[]} />);
+
+    // Find and click collection field
+    const collectionLabel = screen.getByText('Collection');
+    const collectionField = collectionLabel.parentElement.querySelector('.input');
+    fireEvent.click(collectionField);
+
+    await waitFor(() => {
+      expect(screen.getByText('No collections available')).toBeInTheDocument();
     });
   });
 });

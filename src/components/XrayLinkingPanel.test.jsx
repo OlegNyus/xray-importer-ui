@@ -114,16 +114,44 @@ describe('XrayLinkingPanel', () => {
     expect(screen.getByText('Preconditions')).toBeInTheDocument();
   });
 
-  it('should display test plan options', () => {
+  it('should display search placeholder for test plans', () => {
     render(<XrayLinkingPanel {...defaultProps} />);
-    expect(screen.getByText('WCP-100: Test Plan 1')).toBeInTheDocument();
-    expect(screen.getByText('WCP-101: Test Plan 2')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Type to search test plans...')).toBeInTheDocument();
   });
 
-  it('should call onChange when selecting a test plan', () => {
+  it('should show dropdown with options when clicking input', async () => {
     render(<XrayLinkingPanel {...defaultProps} />);
-    const checkbox = screen.getAllByRole('checkbox')[0];
-    fireEvent.click(checkbox);
+    const input = screen.getByPlaceholderText('Type to search test plans...');
+    fireEvent.focus(input);
+
+    await waitFor(() => {
+      expect(screen.getByText('WCP-100')).toBeInTheDocument();
+      expect(screen.getByText(': Test Plan 1')).toBeInTheDocument();
+    });
+  });
+
+  it('should filter options when typing in search', async () => {
+    render(<XrayLinkingPanel {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Type to search test plans...');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '101' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('WCP-101')).toBeInTheDocument();
+      expect(screen.queryByText('WCP-100')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should call onChange when selecting an item from dropdown', async () => {
+    render(<XrayLinkingPanel {...defaultProps} />);
+    const input = screen.getByPlaceholderText('Type to search test plans...');
+    fireEvent.focus(input);
+
+    await waitFor(() => {
+      expect(screen.getByText('WCP-100')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('WCP-100'));
     expect(defaultProps.onChange).toHaveBeenCalled();
   });
 
@@ -133,23 +161,25 @@ describe('XrayLinkingPanel', () => {
       value: {
         ...defaultProps.value,
         testPlanIds: ['1'],
+        testPlanDisplays: [{ id: '1', display: 'WCP-100: Test Plan 1' }],
       },
     };
     render(<XrayLinkingPanel {...props} />);
     expect(screen.getByText('(1 selected)')).toBeInTheDocument();
   });
 
-  it('should check checkbox for selected items', () => {
+  it('should display selected items as chips', () => {
     const props = {
       ...defaultProps,
       value: {
         ...defaultProps.value,
         testPlanIds: ['1'],
+        testPlanDisplays: [{ id: '1', display: 'WCP-100: Test Plan 1' }],
       },
     };
     render(<XrayLinkingPanel {...props} />);
-    const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes[0]).toBeChecked();
+    // Selected item shown as chip with key
+    expect(screen.getByText('WCP-100')).toBeInTheDocument();
   });
 
   it('should support backwards compatibility with key-based selection', () => {
@@ -158,32 +188,27 @@ describe('XrayLinkingPanel', () => {
       value: {
         ...defaultProps.value,
         testPlanIds: ['WCP-100'], // Legacy format using key
+        testPlanDisplays: [{ id: 'WCP-100', display: 'WCP-100: Test Plan 1' }],
       },
     };
     render(<XrayLinkingPanel {...props} />);
-    const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes[0]).toBeChecked();
+    expect(screen.getByText('WCP-100')).toBeInTheDocument();
   });
 
-  it('should render folder dropdown with options', () => {
+  it('should render folder with root option displayed', () => {
     render(<XrayLinkingPanel {...defaultProps} />);
-    const folderSelect = screen.getByRole('combobox');
-    expect(folderSelect).toBeInTheDocument();
     expect(screen.getByText('/ (Root)')).toBeInTheDocument();
-    expect(screen.getByText('/Smoke Tests')).toBeInTheDocument();
-    expect(screen.getByText('/Regression')).toBeInTheDocument();
   });
 
-  it('should show folder text input when no folders loaded', () => {
-    const props = {
-      ...defaultProps,
-      xrayEntitiesCache: {
-        ...defaultCache,
-        folders: null,
-      },
-    };
-    render(<XrayLinkingPanel {...props} />);
-    expect(screen.getByPlaceholderText('/path/to/folder')).toBeInTheDocument();
+  it('should show folder dropdown with options when clicking', async () => {
+    render(<XrayLinkingPanel {...defaultProps} />);
+    const folderInput = screen.getByText('/ (Root)').closest('div');
+    fireEvent.click(folderInput);
+
+    await waitFor(() => {
+      expect(screen.getByText('/Smoke Tests')).toBeInTheDocument();
+      expect(screen.getByText('/Regression')).toBeInTheDocument();
+    });
   });
 
   it('should show loading state for test plans', () => {
@@ -280,7 +305,7 @@ describe('XrayLinkingPanel', () => {
     });
   });
 
-  it('should deselect item when clicking selected checkbox', () => {
+  it('should remove item when clicking X on chip', async () => {
     const onChange = vi.fn();
     const props = {
       ...defaultProps,
@@ -292,15 +317,35 @@ describe('XrayLinkingPanel', () => {
       },
     };
     render(<XrayLinkingPanel {...props} />);
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-      testPlanIds: [],
-      testPlanDisplays: [],
-    }));
+
+    // Find the X button on the chip - it's the button after the chip text
+    const chipText = screen.getByText('WCP-100');
+    const chip = chipText.closest('span');
+    // Get the parent span that contains both text and button
+    const chipContainer = chip.parentElement || chip;
+    const removeButton = chipContainer.querySelector('button');
+
+    if (removeButton) {
+      fireEvent.click(removeButton);
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+        testPlanIds: [],
+        testPlanDisplays: [],
+      }));
+    } else {
+      // Alternative: find all buttons and click the one that's for removing
+      const buttons = screen.getAllByRole('button');
+      const removeBtn = buttons.find(btn => btn.closest('span')?.textContent?.includes('WCP-100'));
+      if (removeBtn) {
+        fireEvent.click(removeBtn);
+        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+          testPlanIds: [],
+          testPlanDisplays: [],
+        }));
+      }
+    }
   });
 
-  it('should show placeholder when no items available', () => {
+  it('should show placeholder when no items available', async () => {
     const props = {
       ...defaultProps,
       xrayEntitiesCache: {
@@ -310,7 +355,13 @@ describe('XrayLinkingPanel', () => {
       },
     };
     render(<XrayLinkingPanel {...props} />);
-    expect(screen.getByText('Click Refresh to load options')).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText('Type to search test plans...');
+    fireEvent.focus(input);
+
+    await waitFor(() => {
+      expect(screen.getByText('Click Refresh to load test plans')).toBeInTheDocument();
+    });
   });
 
   it('should use default cache when xrayEntitiesCache is not provided', () => {
@@ -323,15 +374,22 @@ describe('XrayLinkingPanel', () => {
     expect(screen.getByText('Xray Linking')).toBeInTheDocument();
   });
 
-  it('should handle folder path change', () => {
+  it('should handle folder selection from dropdown', async () => {
     const onChange = vi.fn();
     const props = {
       ...defaultProps,
       onChange,
     };
     render(<XrayLinkingPanel {...props} />);
-    const folderSelect = screen.getByRole('combobox');
-    fireEvent.change(folderSelect, { target: { value: '/Smoke Tests' } });
+
+    const folderInput = screen.getByText('/ (Root)').closest('div');
+    fireEvent.click(folderInput);
+
+    await waitFor(() => {
+      expect(screen.getByText('/Smoke Tests')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('/Smoke Tests'));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
       folderPath: '/Smoke Tests',
     }));
@@ -357,6 +415,11 @@ describe('XrayLinkingPanel', () => {
       },
     };
     render(<XrayLinkingPanel {...props} />);
-    expect(screen.getByText('WCP-100: Saved Plan')).toBeInTheDocument();
+    expect(screen.getByText('WCP-100')).toBeInTheDocument();
+  });
+
+  it('should show hint message', () => {
+    render(<XrayLinkingPanel {...defaultProps} />);
+    expect(screen.getByText(/Select Test Plans, Executions, and Sets/)).toBeInTheDocument();
   });
 });

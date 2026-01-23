@@ -25,6 +25,30 @@ vi.mock('./XrayLinkingPanel', () => ({
       >
         Remove All Plans
       </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: '/NewFolder/SubFolder',
+        })}
+      >
+        Change Folder
+      </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: '/',
+        })}
+      >
+        Change Folder To Root
+      </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: value.folderPath, // Same folder - no change
+        })}
+      >
+        Keep Same Folder
+      </button>
     </div>
   ),
 }));
@@ -67,24 +91,27 @@ describe('XrayLinksEditor', () => {
     expect(screen.getByText('Xray Links')).toBeInTheDocument();
   });
 
-  it('should render Edit Links button in read-only mode', () => {
+  it('should render Update Links button in read-only mode', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    expect(screen.getByRole('button', { name: /Edit Links/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Update Links/ })).toBeInTheDocument();
   });
 
   it('should display current test plan links', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    expect(screen.getByText('WCP-100: Test Plan')).toBeInTheDocument();
+    expect(screen.getByText('WCP-100')).toBeInTheDocument();
+    expect(screen.getByText('Test Plan')).toBeInTheDocument();
   });
 
   it('should display current test execution links', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    expect(screen.getByText('WCP-200: Test Execution')).toBeInTheDocument();
+    expect(screen.getByText('WCP-200')).toBeInTheDocument();
+    expect(screen.getByText('Test Execution')).toBeInTheDocument();
   });
 
   it('should display current test set links', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    expect(screen.getByText('WCP-300: Test Set')).toBeInTheDocument();
+    expect(screen.getByText('WCP-300')).toBeInTheDocument();
+    expect(screen.getByText('Test Set')).toBeInTheDocument();
   });
 
   it('should display current folder path', () => {
@@ -92,7 +119,7 @@ describe('XrayLinksEditor', () => {
     expect(screen.getByText('/Tests')).toBeInTheDocument();
   });
 
-  it('should show "None selected" for empty displays', () => {
+  it('should show "No links added" for empty displays', () => {
     const props = {
       ...defaultProps,
       testCase: {
@@ -104,7 +131,7 @@ describe('XrayLinksEditor', () => {
       },
     };
     render(<XrayLinksEditor {...props} />);
-    expect(screen.getByText('None selected')).toBeInTheDocument();
+    expect(screen.getByText('No links added')).toBeInTheDocument();
   });
 
   it('should render links as clickable Jira links', () => {
@@ -114,55 +141,55 @@ describe('XrayLinksEditor', () => {
     expect(links[0]).toHaveAttribute('target', '_blank');
   });
 
-  it('should enter edit mode when Edit Links is clicked', () => {
+  it('should enter edit mode when Update Links is clicked', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     expect(screen.getByTestId('xray-linking-panel')).toBeInTheDocument();
   });
 
   it('should call onLoadXrayEntities when entering edit mode', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     expect(defaultProps.onLoadXrayEntities).toHaveBeenCalledWith('WCP', false);
   });
 
-  it('should show Cancel and Save buttons in edit mode', () => {
+  it('should show Cancel and Done buttons in edit mode', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Save Changes/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Done/ })).toBeInTheDocument();
   });
 
   it('should exit edit mode when Cancel is clicked', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByRole('button', { name: /Cancel/ }));
-    expect(screen.getByRole('button', { name: /Edit Links/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Update Links/ })).toBeInTheDocument();
   });
 
-  it('should disable Save button when no changes made', () => {
+  it('should disable Done button when no changes made', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
-    expect(screen.getByRole('button', { name: /Save Changes/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    expect(screen.getByRole('button', { name: /Done/ })).toBeDisabled();
   });
 
-  it('should enable Save button when changes are made', async () => {
+  it('should enable Done button when changes are made', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
 
     // Make a change using the mock panel
     fireEvent.click(screen.getByText('Add Plan'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Changes/ })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
     });
   });
 
   it('should call updateTestLinks API when saving', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(api.updateTestLinks).toHaveBeenCalledWith(expect.objectContaining({
@@ -174,9 +201,9 @@ describe('XrayLinksEditor', () => {
 
   it('should call updateDraftXrayLinks after successful save', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(api.updateDraftXrayLinks).toHaveBeenCalledWith('tc-1', expect.any(Object));
@@ -185,9 +212,9 @@ describe('XrayLinksEditor', () => {
 
   it('should show success toast after successful save', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Links updated successfully');
@@ -196,9 +223,9 @@ describe('XrayLinksEditor', () => {
 
   it('should call onLinksUpdated after successful save', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(defaultProps.onLinksUpdated).toHaveBeenCalled();
@@ -207,12 +234,12 @@ describe('XrayLinksEditor', () => {
 
   it('should exit edit mode after successful save', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Edit Links/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Update Links/ })).toBeInTheDocument();
     });
   });
 
@@ -220,9 +247,9 @@ describe('XrayLinksEditor', () => {
     api.updateTestLinks.mockResolvedValueOnce({ success: false, error: 'API Error' });
 
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('API Error');
@@ -235,33 +262,33 @@ describe('XrayLinksEditor', () => {
       testCase: { ...defaultProps.testCase, testIssueId: null },
     };
     render(<XrayLinksEditor {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Cannot update links: Test issue ID not found');
     });
   });
 
-  it('should show Saving... state during save', async () => {
+  it('should show Syncing... state during save', async () => {
     api.updateTestLinks.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100)));
 
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+    expect(screen.getByText('Syncing...')).toBeInTheDocument();
   });
 
   it('should handle API exception', async () => {
     api.updateTestLinks.mockRejectedValueOnce(new Error('Network error'));
 
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(defaultProps.showToast).toHaveBeenCalledWith('Network error');
@@ -297,22 +324,23 @@ describe('XrayLinksEditor', () => {
     };
     render(<XrayLinksEditor {...props} />);
     expect(screen.getByText('Xray Links')).toBeInTheDocument();
-    expect(screen.getAllByText('None selected').length).toBeGreaterThan(0);
+    // Empty categories show "No links added"
+    expect(screen.getAllByText('No links added').length).toBeGreaterThan(0);
   });
 
   it('should not call onLoadXrayEntities if not provided', () => {
     const props = { ...defaultProps, onLoadXrayEntities: undefined };
     render(<XrayLinksEditor {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     // Should not throw
   });
 
   it('should not call onLinksUpdated if not provided', async () => {
     const props = { ...defaultProps, onLinksUpdated: undefined };
     render(<XrayLinksEditor {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     await waitFor(() => {
       expect(api.updateTestLinks).toHaveBeenCalled();
@@ -322,17 +350,161 @@ describe('XrayLinksEditor', () => {
 
   it('should detect removal of items as a change', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Remove All Plans'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Changes/ })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change as a change', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change to root as a change', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should call API with folder diff when folder changes', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
+
+    await waitFor(() => {
+      expect(api.updateTestLinks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          diff: expect.objectContaining({
+            folder: { original: '/Tests', current: '/NewFolder/SubFolder' },
+          }),
+        })
+      );
+    });
+  });
+
+  it('should call API with folder diff when changing to root', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
+
+    await waitFor(() => {
+      expect(api.updateTestLinks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          diff: expect.objectContaining({
+            folder: { original: '/Tests', current: '/' },
+          }),
+        })
+      );
+    });
+  });
+
+  it('should NOT detect change when folder stays the same', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Keep Same Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).toBeDisabled();
+    });
+  });
+
+  it('should detect folder change when original folderPath is undefined', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: undefined,
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change when original folderPath is null', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: null,
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change from root to a path', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: '/',
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should NOT detect change when folder changes from root to root', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: '/',
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).toBeDisabled();
     });
   });
 
   it('should extract key from display string for Jira link', () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    const link = screen.getByRole('link', { name: /WCP-100: Test Plan/ });
+    const link = screen.getByRole('link', { name: /WCP-100/ });
     expect(link).toHaveAttribute('href', 'https://test.atlassian.net/browse/WCP-100');
   });
 
@@ -355,9 +527,9 @@ describe('XrayLinksEditor', () => {
     // This test verifies the positive case - when testCase has an id,
     // updateDraftXrayLinks should be called
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
     fireEvent.click(screen.getByText('Add Plan'));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
 
     // Wait for both API calls to complete
     await waitFor(() => {
@@ -368,7 +540,7 @@ describe('XrayLinksEditor', () => {
 
   it('should close edit mode immediately when no changes and save clicked', async () => {
     render(<XrayLinksEditor {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Edit Links/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
 
     // Force the save button to be enabled by directly calling it even with no changes
     // (this tests the hasChanges() check in handleSave)
@@ -379,8 +551,8 @@ describe('XrayLinksEditor', () => {
   });
 });
 
-describe('LinkDisplayItem', () => {
-  // LinkDisplayItem is tested through XrayLinksEditor tests above
+describe('LinkTag', () => {
+  // LinkTag is tested through XrayLinksEditor tests above
   // Additional edge cases:
 
   it('should handle display items without display property', () => {
