@@ -201,7 +201,7 @@ function XrayLinksEditor({
       diff.testSets.toRemove.length > 0 ||
       diff.preconditions.toAdd.length > 0 ||
       diff.preconditions.toRemove.length > 0 ||
-      (diff.folder.original !== diff.folder.current && diff.folder.current !== '/')
+      diff.folder.original !== diff.folder.current
     );
   };
 

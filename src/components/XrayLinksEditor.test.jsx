@@ -25,6 +25,30 @@ vi.mock('./XrayLinkingPanel', () => ({
       >
         Remove All Plans
       </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: '/NewFolder/SubFolder',
+        })}
+      >
+        Change Folder
+      </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: '/',
+        })}
+      >
+        Change Folder To Root
+      </button>
+      <button
+        onClick={() => onChange({
+          ...value,
+          folderPath: value.folderPath, // Same folder - no change
+        })}
+      >
+        Keep Same Folder
+      </button>
     </div>
   ),
 }));
@@ -331,6 +355,150 @@ describe('XrayLinksEditor', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change as a change', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change to root as a change', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should call API with folder diff when folder changes', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
+
+    await waitFor(() => {
+      expect(api.updateTestLinks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          diff: expect.objectContaining({
+            folder: { original: '/Tests', current: '/NewFolder/SubFolder' },
+          }),
+        })
+      );
+    });
+  });
+
+  it('should call API with folder diff when changing to root', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+    fireEvent.click(screen.getByRole('button', { name: /Done/ }));
+
+    await waitFor(() => {
+      expect(api.updateTestLinks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          diff: expect.objectContaining({
+            folder: { original: '/Tests', current: '/' },
+          }),
+        })
+      );
+    });
+  });
+
+  it('should NOT detect change when folder stays the same', async () => {
+    render(<XrayLinksEditor {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Keep Same Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).toBeDisabled();
+    });
+  });
+
+  it('should detect folder change when original folderPath is undefined', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: undefined,
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change when original folderPath is null', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: null,
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should detect folder change from root to a path', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: '/',
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).not.toBeDisabled();
+    });
+  });
+
+  it('should NOT detect change when folder changes from root to root', async () => {
+    const props = {
+      ...defaultProps,
+      testCase: {
+        ...defaultProps.testCase,
+        xrayLinking: {
+          ...defaultProps.testCase.xrayLinking,
+          folderPath: '/',
+        },
+      },
+    };
+    render(<XrayLinksEditor {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Update Links/ }));
+    fireEvent.click(screen.getByText('Change Folder To Root'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Done/ })).toBeDisabled();
     });
   });
 
